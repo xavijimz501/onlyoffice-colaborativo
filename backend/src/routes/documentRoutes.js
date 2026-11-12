@@ -1,0 +1,12 @@
+const express = require('express');
+const controller = require('../controllers/documentController');
+const { requireAuth } = require('../middleware/requireAuth');
+const router = express.Router();
+router.post('/', requireAuth, controller.create);
+router.get('/', requireAuth, controller.list);
+router.get('/:id/editor-config', requireAuth, controller.editorConfig);
+router.get('/:id/content', controller.content);
+router.get('/:id/versions', requireAuth, controller.versions);
+router.get('/:id/audit', requireAuth, controller.audit);
+router.post('/:id/save', requireAuth, controller.save);
+module.exports = router;
