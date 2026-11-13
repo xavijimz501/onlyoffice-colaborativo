@@ -69,11 +69,11 @@ async function recordVersion({ documentId, filePath, modifiedBy, source, callbac
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    const [existing] = await connection.execute('SELECT id FROM onlyoffice_callbacks WHERE callback_hash = ? FOR UPDATE', [callbackHash]);
+    const [existing] = await connection.execute('SELECT callback_hash FROM onlyoffice_callbacks WHERE callback_hash = ? FOR UPDATE', [callbackHash]);
     if (existing.length) { await connection.rollback(); return { duplicate: true }; }
     const [docs] = await connection.execute('SELECT current_version FROM documents WHERE id = ? FOR UPDATE', [documentId]);
     if (!docs.length) throw new Error('Documento inexistente durante el guardado.');
-    const [duplicateAfterLock] = await connection.execute('SELECT id FROM onlyoffice_callbacks WHERE callback_hash = ? FOR UPDATE', [callbackHash]);
+    const [duplicateAfterLock] = await connection.execute('SELECT callback_hash FROM onlyoffice_callbacks WHERE callback_hash = ? FOR UPDATE', [callbackHash]);
     if (duplicateAfterLock.length) { await connection.rollback(); return { duplicate: true }; }
     const versionNumber = docs[0].current_version + 1;
     await connection.execute('INSERT INTO document_versions (document_id, version_number, file_path, modified_by, source) VALUES (?, ?, ?, ?, ?)', [documentId, versionNumber, filePath, modifiedBy, source]);

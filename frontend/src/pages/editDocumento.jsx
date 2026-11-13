@@ -137,12 +137,6 @@ export default function EditDocumento() {
     finally { setSaving(false) }
   }
 
-  function handleLogout() {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    navigate('/login', { replace: true })
-  }
-
   if (!user) return <main className="login-container">Cargando sesión…</main>
 
   return (
@@ -153,9 +147,7 @@ export default function EditDocumento() {
         <header className="topbar">
           <div className="brand-mark">O</div>
           <div className="brand-copy"><strong>{activeDocument?.title || 'Editor colaborativo'}</strong><span>{user.nombre} · {user.correo}</span></div>
-          <button className="toolbar-button" onClick={handleCreateDocument} disabled={creating}>{creating ? 'Creando…' : 'Nuevo documento'}</button>
           {documentId && <button className="toolbar-button primary" onClick={handleSave} disabled={saving || !editorReady}>{saving ? 'Guardando…' : 'Guardar'}</button>}
-          <button className="toolbar-button logout-button" onClick={handleLogout}>Salir</button>
         </header>
 
         {error && <div className="error-banner" role="alert">{error}</div>}
@@ -170,6 +162,7 @@ export default function EditDocumento() {
             {!documentId ? (
               <section className="sidebar-section document-list-section">
                 <h2>Documentos disponibles <span className="count-badge">{documents.length}</span></h2>
+                <button className="toolbar-button primary new-document-button" onClick={handleCreateDocument} disabled={creating}>{creating ? 'Creando…' : 'Nuevo documento'}</button>
                 {documents.length === 0 ? <p className="empty-state">No hay documentos todavía. Crea uno para iniciar.</p> : <ul className="document-list">{documents.map((document) => <li key={document.id}><button className="document-list-item" onClick={() => { setMessage(''); setDocumentId(String(document.id)) }}><strong>{document.title}</strong><span>Documento {document.id} · versión {document.current_version}</span></button></li>)}</ul>}
               </section>
             ) : (

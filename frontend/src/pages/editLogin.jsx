@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import HeaderGobMX from '../components/HeaderGobMx'
+import NavbarGobMX from '../components/navbar'
 import FooterGobMX from '../components/footer'
 import { login } from '../services/authService'
 import '../App.css'
@@ -31,6 +32,7 @@ export default function EditLogin() {
   return (
     <div className="login-page">
       <HeaderGobMX />
+      <NavbarGobMX />
       <main className="login-container">
         <section className="login-card">
           <h1>Acceso al editor</h1>

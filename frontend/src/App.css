@@ -410,6 +410,9 @@
     color: white;
 }
 
+.session-button { border: 0; cursor: pointer; font: inherit; }
+.new-document-button { width: 100%; margin-bottom: 12px; }
+
 .logout-button {
     border: 0;
     background: transparent;
