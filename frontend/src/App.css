@@ -410,8 +410,16 @@
     color: white;
 }
 
-.session-button { border: 0; cursor: pointer; font: inherit; }
-.new-document-button { width: 100%; margin-bottom: 12px; }
+.session-button {
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+}
+
+.new-document-button {
+    width: 100%;
+    margin-bottom: 12px;
+}
 
 .logout-button {
     border: 0;
@@ -549,4 +557,13 @@
     height: 40px;
     object-fit: contain;
     margin-right: 1rem;
+}
+
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin-right: auto;
+    margin-left: auto;
+    padding-right: 1.25rem;
+    padding-left: 1.25rem;
 }

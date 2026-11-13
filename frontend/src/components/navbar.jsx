@@ -17,7 +17,7 @@ export default function NavbarGobMX() {
 
   return (
     <section className="subheader">
-      <div className="subheader__contenedor">
+      <div className="subheader__contenedor container">
         <img className="subheader__logo" src={buenGobiernoLogo} alt="Buen Gobierno" />
         <details className="mexico__details navHeader__details">
           <summary className="mexico__summary"><span className="mexico__span">Menú</span></summary>

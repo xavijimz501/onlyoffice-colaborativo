@@ -3,7 +3,7 @@ import React from 'react';
 export default function FooterGobMX() {
     return (
         <footer className="footer">
-            <div className="footer__contenedor">
+            <div className="footer__contenedor container">
                 <div className="footer__mexico">
                     <div className="mexico__escudo">
                         <a

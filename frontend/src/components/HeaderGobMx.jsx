@@ -7,7 +7,7 @@ export default function HeaderGobMX() {
                 Ir al contenido principal
             </a>
             <section className="mexico">
-                <div className="mexico__contenedor">
+                <div className="mexico__contenedor container">
                     <div className="mexico__escudo">
                         <a
                             href="https://www.gob.mx/"

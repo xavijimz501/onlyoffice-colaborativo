@@ -3,6 +3,7 @@ import { io } from 'socket.io-client'
 import { useLocation, useNavigate } from 'react-router-dom'
 import HeaderGobMX from '../components/HeaderGobMx'
 import NavbarGobMX from '../components/navbar'
+import FooterGobMX from '../components/footer'
 import { API_URL } from '../services/api'
 import { getCurrentUser } from '../services/authService'
 import { createDocument, getDocumentAudit, getDocumentEditorConfig, getDocuments, getDocumentVersions, saveDocument } from '../services/documentService'
@@ -181,6 +182,7 @@ export default function EditDocumento() {
             )}
           </aside>
         </div>
+        <FooterGobMX />
       </main>
     </div>
   )
