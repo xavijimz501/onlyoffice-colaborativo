@@ -180,7 +180,7 @@ export default function EditDocumento() {
                   {onlineUsers.length === 0 ? <p className="empty-state">Conectando al documento…</p> : <ul className="online-list">{onlineUsers.map((onlineUser) => <li key={onlineUser.idusuario}><span className="presence-dot" />{onlineUser.nombre}{String(onlineUser.idusuario) === String(user.idusuario) && <small> (tú)</small>}</li>)}</ul>}
                 </section>
                 <section className="sidebar-section audit-section">
-                  <h2>Auditoría</h2>
+                  <h2>Historico</h2>
                   {audit.length === 0 ? <p className="empty-state">Aún no hay modificaciones registradas.</p> : <ol className="audit-list">{audit.map((entry) => <li key={entry.id}><strong>{entry.nombre}</strong><span>{auditLabel(entry.action)}</span><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}</time></li>)}</ol>}
                   <details className="versions-panel"><summary>Versiones ({versions.length})</summary><ol>{versions.map((version) => <li key={version.version_number}><strong>v{version.version_number}</strong><span>{version.source === 'initial' ? 'Inicial' : version.source === 'close' ? 'Al cerrar' : 'Guardado'}</span><time>{new Date(version.created_at).toLocaleString('es-MX')}</time></li>)}</ol></details>
                 </section>
@@ -195,7 +195,8 @@ export default function EditDocumento() {
 
 function auditLabel(action) {
   if (action === 'document_created') return 'creó el documento'
-  if (action === 'modification') return 'modificó el documento'
+  if (action === 'Modificó el archivo') return action
+  if (action === 'modification') return 'Modificó el archivo'
   return action
 }
 

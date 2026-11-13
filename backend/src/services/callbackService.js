@@ -11,7 +11,7 @@ function assertTrustedDownloadUrl(value) {
 }
 
 async function processCallback(body) {
-  const { key, status, url, users } = body;
+  const { key, status, url, users, userdata } = body;
   if (status !== 2 && status !== 6) return { ignored: true };
   if (!key || !url) throw new Error('Callback de guardado incompleto.');
   assertTrustedDownloadUrl(url);
@@ -21,7 +21,8 @@ async function processCallback(body) {
   const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(30_000) });
   if (!response.ok) throw new Error(`Error descargando documento: HTTP ${response.status}.`);
   const bytes = Buffer.from(await response.arrayBuffer());
-  const callbackHash = crypto.createHash('sha256').update(`${key}|${status}|${url}`).digest('hex');
+  // userdata distingue cada guardado explícito y permite deduplicar los reintentos del callback.
+  const callbackHash = crypto.createHash('sha256').update(`${key}|${status}|${url}|${userdata || ''}`).digest('hex');
   const filePath = path.join(process.env.STORAGE_DIR, 'versions', `document-${document.id}-${callbackHash}.${document.file_type}`);
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, bytes);

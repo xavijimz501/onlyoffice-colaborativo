@@ -81,7 +81,7 @@ async function recordVersion({ documentId, filePath, modifiedBy, source, callbac
     await connection.execute('INSERT INTO onlyoffice_callbacks (callback_hash, document_id) VALUES (?, ?)', [callbackHash, documentId]);
     await connection.execute(
       'INSERT INTO document_audit (document_id, modified_by, action) VALUES (?, ?, ?)',
-      [documentId, modifiedBy, 'modification'],
+      [documentId, modifiedBy, 'Modificó el archivo'],
     );
     if (source === 'close') {
       const newKey = `doc-${documentId}-v${versionNumber}-${Date.now()}`;

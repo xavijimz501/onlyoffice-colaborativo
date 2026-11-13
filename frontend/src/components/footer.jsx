@@ -5,7 +5,15 @@ export default function FooterGobMX() {
         <footer className="footer">
             <div className="footer__contenedor">
                 <div className="footer__mexico">
-                    <i className="snd__icono snd-gobierno-mexico footer__escudo color--origen" aria-hidden="true"></i>
+                    <div className="mexico__escudo">
+                        <a
+                            href="https://www.gob.mx/"
+                            className="mexico__aescudo"
+                            aria-label="Ir a la pagina de inicio del Gobierno de Mexico"
+                        >
+                            <i className="snd__icono snd-gobierno-mexico mexico__img color--origen" aria-hidden="true"></i>
+                        </a>
+                    </div>
                 </div>
 
                 <div className="footer__colCentral">

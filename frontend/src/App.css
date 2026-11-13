@@ -539,3 +539,11 @@
     background-repeat: no-repeat;
     background-position: center;
 }
+
+.subheader__logo {
+    display: block;
+    width: auto;
+    height: 40px;
+    object-fit: contain;
+    margin-right: 1rem;
+}

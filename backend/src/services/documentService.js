@@ -56,7 +56,8 @@ async function createDocument(title, userId) {
 async function requestSave(id, userId) {
   const document = await documentRepository.findById(id);
   if (!document) return null;
-  const command = { c: 'forcesave', key: document.editor_key, userdata: `user:${userId}` };
+  const requestId = crypto.randomUUID();
+  const command = { c: 'forcesave', key: document.editor_key, userdata: `user:${userId}:save:${requestId}` };
   const token = jwt.sign(command, process.env.ONLYOFFICE_JWT_SECRET);
   const commandUrl = process.env.ONLYOFFICE_COMMAND_URL || `${process.env.ONLYOFFICE_URL.replace(/\/$/, '')}/command`;
   const response = await fetch(commandUrl, {
@@ -69,7 +70,7 @@ async function requestSave(id, userId) {
   const result = await response.json();
   if (result.error === 4) return { saved: false, message: 'No hay cambios pendientes para guardar.' };
   if (result.error !== 0) throw new Error(`Document Server rechazó el guardado (error ${result.error}).`);
-  return { saved: true, message: 'Solicitud de guardado enviada.' };
+  return { saved: true, requestId, message: 'Solicitud de guardado enviada.' };
 }
 
 module.exports = { getDocuments, getEditorConfig, getDocumentStream, getVersions, getAudit, createDocument, requestSave };
