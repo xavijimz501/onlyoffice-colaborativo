@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '')
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || new URL(API_URL, window.location.origin).origin
+const SOCKET_PATH = import.meta.env.VITE_SOCKET_PATH || '/socket.io'
 
 export async function apiRequest(path, options = {}) {
   const token = localStorage.getItem('token')
@@ -21,4 +23,4 @@ export async function apiRequest(path, options = {}) {
   return data
 }
 
-export { API_URL }
+export { API_URL, SOCKET_URL, SOCKET_PATH }

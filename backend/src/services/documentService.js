@@ -37,6 +37,68 @@ async function getAudit(id) {
   return documentRepository.listAudit(id);
 }
 
+function parseHistoryData(value) {
+  if (!value) return {};
+  if (typeof value === 'object') return value;
+  try { return JSON.parse(value); } catch { return {}; }
+}
+
+function historyFileUrl(documentId, versionNumber, kind) {
+  const accessToken = jwt.sign(
+    { scope: 'document-history:file', documentId: String(documentId), versionNumber: Number(versionNumber), kind },
+    process.env.APP_JWT_SECRET,
+    { expiresIn: '10m' },
+  );
+  return `${process.env.APP_PUBLIC_URL}/api/documents/${documentId}/history/${versionNumber}/files/${kind}?accessToken=${encodeURIComponent(accessToken)}`;
+}
+
+async function getHistory(id) {
+  const document = await documentRepository.findById(id);
+  if (!document) return null;
+  const rows = await documentRepository.listHistoryVersions(id);
+  const history = rows.map((version) => {
+    const data = parseHistoryData(version.history_data);
+    return {
+      created: new Date(version.created_at).toISOString(),
+      key: version.history_key,
+      user: { id: String(version.modified_by || 'system'), name: version.modified_name },
+      version: version.version_number,
+      ...(data.serverVersion ? { changes: data.changes || [], serverVersion: data.serverVersion } : {}),
+    };
+  });
+  return { currentVersion: history.at(-1)?.version || document.current_version, history };
+}
+
+async function getHistoryVersionData(id, versionNumber) {
+  const target = await documentRepository.findHistoryVersion(id, versionNumber);
+  if (!target || !target.changes_path) return null;
+  const previous = await documentRepository.findPreviousHistoryVersion(id, versionNumber);
+  if (!previous) return null;
+  const params = {
+    changesUrl: historyFileUrl(id, versionNumber, 'changes'),
+    fileType: target.file_type || 'docx',
+    key: target.history_key,
+    previous: {
+      fileType: previous.file_type || target.file_type || 'docx',
+      key: previous.history_key,
+      url: historyFileUrl(id, previous.version_number, 'document'),
+    },
+    url: historyFileUrl(id, versionNumber, 'document'),
+    version: Number(target.version_number),
+  };
+  return { ...params, token: jwt.sign(params, process.env.ONLYOFFICE_JWT_SECRET) };
+}
+
+async function getHistoryFile(id, versionNumber, kind) {
+  const entry = await documentRepository.findHistoryFile(id, versionNumber, kind);
+  if (!entry || !entry.file_path) return null;
+  const absolutePath = path.resolve(entry.file_path);
+  const root = path.resolve(process.env.STORAGE_DIR);
+  if (!absolutePath.startsWith(`${root}${path.sep}`)) throw new Error('Ruta fuera del almacenamiento permitido.');
+  await fsp.access(absolutePath, fs.constants.R_OK);
+  return { stream: fs.createReadStream(absolutePath), fileType: entry.file_type || 'docx', kind };
+}
+
 async function createDocument(title, userId) {
   const template = path.resolve(process.env.DOCUMENT_TEMPLATE_PATH || path.join(__dirname, '../../storage/documentos/demo.docx'));
   const storageRoot = path.resolve(process.env.STORAGE_DIR);
@@ -73,4 +135,8 @@ async function requestSave(id, userId) {
   return { saved: true, requestId, message: 'Solicitud de guardado enviada.' };
 }
 
-module.exports = { getDocuments, getEditorConfig, getDocumentStream, getVersions, getAudit, createDocument, requestSave };
+module.exports = {
+  getDocuments, getEditorConfig, getDocumentStream, getVersions, getAudit,
+  getHistory, getHistoryVersionData, getHistoryFile,
+  createDocument, requestSave,
+};

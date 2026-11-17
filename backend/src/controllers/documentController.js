@@ -67,4 +67,39 @@ async function versions(req, res, next) {
     return res.json({ versions: result });
   } catch (error) { return next(error); }
 }
-module.exports = { list, editorConfig, content, versions, audit, create, save };
+
+async function history(req, res, next) {
+  try {
+    const result = await documentService.getHistory(req.params.id);
+    if (!result) return res.status(404).json({ error: 'DOCUMENT_NOT_FOUND' });
+    return res.json(result);
+  } catch (error) { return next(error); }
+}
+
+async function historyVersion(req, res, next) {
+  try {
+    const result = await documentService.getHistoryVersionData(req.params.id, req.params.versionNumber);
+    if (!result) return res.status(404).json({ error: 'HISTORY_VERSION_NOT_FOUND' });
+    return res.json(result);
+  } catch (error) { return next(error); }
+}
+
+async function historyFile(req, res, next) {
+  let access;
+  try { access = jwt.verify(req.query.accessToken, process.env.APP_JWT_SECRET); }
+  catch { return res.status(403).json({ error: 'INVALID_DOCUMENT_TOKEN' }); }
+  if (
+    access.scope !== 'document-history:file'
+    || String(access.documentId) !== String(req.params.id)
+    || Number(access.versionNumber) !== Number(req.params.versionNumber)
+    || access.kind !== req.params.kind
+    || !['document', 'changes'].includes(req.params.kind)
+  ) return res.status(403).json({ error: 'FORBIDDEN' });
+  try {
+    const result = await documentService.getHistoryFile(req.params.id, req.params.versionNumber, req.params.kind);
+    if (!result) return res.sendStatus(404);
+    res.type(result.kind === 'changes' ? 'application/zip' : result.fileType);
+    return result.stream.pipe(res);
+  } catch (error) { return next(error); }
+}
+module.exports = { list, editorConfig, content, versions, audit, create, save, history, historyVersion, historyFile };

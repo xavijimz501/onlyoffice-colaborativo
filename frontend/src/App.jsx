@@ -8,7 +8,7 @@ function RequireSession({ children }) {
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL === '/' ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '')}>
       <Routes>
         <Route path="/login" element={<EditLogin />} />
         <Route path="/" element={<EditLogin />} />

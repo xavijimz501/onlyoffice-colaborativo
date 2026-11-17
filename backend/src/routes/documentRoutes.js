@@ -8,5 +8,8 @@ router.get('/:id/editor-config', requireAuth, controller.editorConfig);
 router.get('/:id/content', controller.content);
 router.get('/:id/versions', requireAuth, controller.versions);
 router.get('/:id/audit', requireAuth, controller.audit);
+router.get('/:id/history', requireAuth, controller.history);
+router.get('/:id/history/:versionNumber', requireAuth, controller.historyVersion);
+router.get('/:id/history/:versionNumber/files/:kind', controller.historyFile);
 router.post('/:id/save', requireAuth, controller.save);
 module.exports = router;

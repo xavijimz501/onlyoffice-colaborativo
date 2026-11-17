@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 import { useLocation, useNavigate } from 'react-router-dom'
 import HeaderGobMX from '../components/HeaderGobMx'
 import NavbarGobMX from '../components/navbar'
 import FooterGobMX from '../components/footer'
-import { API_URL } from '../services/api'
+import { SOCKET_PATH, SOCKET_URL } from '../services/api'
 import { getCurrentUser } from '../services/authService'
-import { createDocument, getDocumentAudit, getDocumentEditorConfig, getDocuments, getDocumentVersions, saveDocument } from '../services/documentService'
+import { createDocument, getDocumentAudit, getDocumentEditorConfig, getDocumentHistory, getDocumentHistoryVersion, getDocuments, getDocumentVersions, saveDocument } from '../services/documentService'
 import '../App.css'
+
+const AUDIT_PAGE_SIZE = 8
 
 function readSavedUser() {
   try { return JSON.parse(localStorage.getItem('user') || 'null') } catch { return null }
@@ -26,9 +28,13 @@ export default function EditDocumento() {
   const [documents, setDocuments] = useState([])
   const [versions, setVersions] = useState([])
   const [audit, setAudit] = useState([])
+  const [auditPage, setAuditPage] = useState(1)
   const [onlineUsers, setOnlineUsers] = useState([])
   const [editorReady, setEditorReady] = useState(false)
+  const editorRef = useRef(null)
   const activeDocument = documents.find((document) => String(document.id) === String(documentId))
+  const auditPageCount = Math.max(1, Math.ceil(audit.length / AUDIT_PAGE_SIZE))
+  const visibleAudit = audit.slice((auditPage - 1) * AUDIT_PAGE_SIZE, auditPage * AUDIT_PAGE_SIZE)
 
   useEffect(() => {
     let active = true
@@ -70,18 +76,39 @@ export default function EditDocumento() {
             ...config.events,
             onDocumentReady: () => setEditorReady(true),
             onError: (event) => setError(event?.data?.errorDescription || 'ONLYOFFICE reportó un error.'),
+            onRequestHistory: async () => {
+              try {
+                const history = await getDocumentHistory(documentId)
+                editor?.refreshHistory(history)
+              } catch (cause) { setError(`No se pudo cargar el historial: ${cause.message}`) }
+            },
+            onRequestHistoryData: async (event) => {
+              try {
+                const versionData = await getDocumentHistoryVersion(documentId, event.data)
+                editor?.setHistoryData(versionData)
+              } catch (cause) {
+                setError(`No se pudo abrir la versión: ${cause.message}`)
+                editor?.setHistoryData({ error: 'No se pudo cargar esta versión.', version: event.data })
+              }
+            },
           },
         })
+        editorRef.current = editor
         setError('')
       } catch (cause) {
         if (!cancelled) setError(cause.message || 'No se pudo iniciar ONLYOFFICE.')
       }
     }
     initializeEditor()
-    return () => { cancelled = true; editor?.destroyEditor() }
+    return () => {
+      cancelled = true
+      editor?.destroyEditor()
+      if (editorRef.current === editor) editorRef.current = null
+    }
   }, [documentId, user])
 
   useEffect(() => {
+    setAuditPage(1)
     if (!documentId) { setVersions([]); setAudit([]); return undefined }
     let cancelled = false
     Promise.all([getDocumentVersions(documentId), getDocumentAudit(documentId)])
@@ -94,7 +121,7 @@ export default function EditDocumento() {
 
   useEffect(() => {
     if (!token || !documentId || !editorReady) return undefined
-    const socket = io(API_URL, { auth: { token }, transports: ['websocket', 'polling'] })
+    const socket = io(SOCKET_URL, { path: SOCKET_PATH, auth: { token }, transports: ['websocket', 'polling'] })
     socket.on('connect', () => socket.emit('document:join', documentId))
     socket.on('presence:update', setOnlineUsers)
     socket.on('audit:update', () => refreshAudit(documentId))
@@ -138,6 +165,18 @@ export default function EditDocumento() {
     finally { setSaving(false) }
   }
 
+  async function handleShowChanges(entry) {
+    if (!entry.history_version) {
+      setMessage('La comparación coloreada estará disponible cuando se cierre la sesión de edición del documento.')
+      return
+    }
+    try {
+      const history = await getDocumentHistory(documentId)
+      // refreshHistory selecciona la revisión de esta entrada en la lista nativa de ONLYOFFICE.
+      editorRef.current?.refreshHistory({ ...history, currentVersion: Number(entry.history_version) })
+    } catch (cause) { setError(`No se pudo abrir la comparación: ${cause.message}`) }
+  }
+
   if (!user) return <main className="login-container">Cargando sesión…</main>
 
   return (
@@ -175,7 +214,17 @@ export default function EditDocumento() {
                 </section>
                 <section className="sidebar-section audit-section">
                   <h2>Historico</h2>
-                  {audit.length === 0 ? <p className="empty-state">Aún no hay modificaciones registradas.</p> : <ol className="audit-list">{audit.map((entry) => <li key={entry.id}><strong>{entry.nombre}</strong><span>{auditLabel(entry.action)}</span><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}</time></li>)}</ol>}
+                  {audit.length === 0 ? <p className="empty-state">Aún no hay modificaciones registradas.</p> : <>
+                    <ol className="audit-list">{visibleAudit.map((entry) => <li key={entry.id}>
+                    <strong>{entry.nombre}</strong><span>{auditLabel(entry.action)}</span><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}</time>
+                    {entry.history_version ? <button className="history-change-button" onClick={() => handleShowChanges(entry)}>Ver cambios en el documento</button> : entry.action !== 'document_created' && <small className="history-pending">Disponible al cerrar la sesión de edición</small>}
+                    </li>)}</ol>
+                    {audit.length > AUDIT_PAGE_SIZE && <nav className="audit-pagination" aria-label="Paginación del historial">
+                      <button type="button" onClick={() => setAuditPage((page) => Math.max(1, page - 1))} disabled={auditPage === 1}>Anterior</button>
+                      <span>Página {auditPage} de {auditPageCount} · {audit.length} cambios</span>
+                      <button type="button" onClick={() => setAuditPage((page) => Math.min(auditPageCount, page + 1))} disabled={auditPage === auditPageCount}>Siguiente</button>
+                    </nav>}
+                  </>}
                   <details className="versions-panel"><summary>Versiones ({versions.length})</summary><ol>{versions.map((version) => <li key={version.version_number}><strong>v{version.version_number}</strong><span>{version.source === 'initial' ? 'Inicial' : version.source === 'close' ? 'Al cerrar' : 'Guardado'}</span><time>{new Date(version.created_at).toLocaleString('es-MX')}</time></li>)}</ol></details>
                 </section>
               </>

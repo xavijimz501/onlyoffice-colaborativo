@@ -4,20 +4,20 @@ Aplicación React/Vite + Express/MySQL. La sincronización del documento y la co
 
 ## Configuración de base de datos
 
-`usuarios` y `view_usuarios_app_perfiles` se consultan en `AUTH_DB_NAME` (por defecto, `mindbuengob`). Las tablas `documents`, `document_versions`, `onlyoffice_callbacks` y `document_audit` se guardan en `DB_NAME`.
+La aplicación usa `mindbuengob` para autenticación y documentos. Lee `usuarios` y `view_usuarios_app_perfiles`; las tablas colaborativas son `onlyoffice_documents`, `onlyoffice_document_versions`, `onlyoffice_document_audit` y `onlyoffice_callbacks`.
 
-Selecciona `DB_NAME` al ejecutar el esquema. Por ejemplo:
+Si necesitas crear estas tablas desde cero, selecciona `mindbuengob` al ejecutar el esquema. Como ya las agregaste, no vuelvas a ejecutar el script de creación. El backend se conecta a `mindbuengob` mediante `DB_NAME`.
 
 ```powershell
-mysql -h 127.0.0.1 -u tu_usuario -p onlyoffice_app < backend\sql\schema.sql
+mysql -h 127.0.0.1 -u tu_usuario -p mindbuengob < backend\sql\schema.sql
 ```
 
-El script usa `CREATE TABLE IF NOT EXISTS`, por lo que conserva las tablas ya creadas y añade `document_audit`. Haz respaldo antes de aplicar cambios a una base de producción.
+El archivo `backend/sql/schema.sql` es una referencia de la estructura requerida. Para registrar usuarios, MySQL debe permitir leer las tablas de aplicación y la vista de perfiles en `mindbuengob`.
 
 ## Configurar y levantar
 
 1. ONLYOFFICE Docs debe estar ejecutándose en Docker y compartir su JWT secret con `ONLYOFFICE_JWT_SECRET`.
-2. Revisa `backend/.env`. Se requiere `APP_JWT_SECRET` para las sesiones de la aplicación. El proyecto ya agregó uno aleatorio si faltaba. Ajusta `DB_NAME` y `AUTH_DB_NAME` a tus bases, y verifica que `APP_PUBLIC_URL` sea accesible desde el contenedor Document Server.
+2. Revisa `backend/.env`. `DB_NAME` y `AUTH_DB_NAME` deben ser `mindbuengob`. Se requiere `APP_JWT_SECRET` para las sesiones de la aplicación. Verifica que `APP_PUBLIC_URL` sea accesible desde el contenedor Document Server.
 3. En PowerShell, instala/actualiza dependencias y levanta el backend:
 
    ```powershell
@@ -35,6 +35,18 @@ El script usa `CREATE TABLE IF NOT EXISTS`, por lo que conserva las tablas ya cr
    ```
 
 5. Abre la URL de Vite, inicia sesión con un usuario activo y pulsa **Nuevo documento**. Se copia `DOCUMENT_TEMPLATE_PATH` (por defecto `backend/storage/documentos/demo.docx`) para crear un DOCX nuevo.
+
+## Perfiles local y productivo
+
+Los archivos `backend/.env`, `frontend/.env` y `docker/.env` son locales y están excluidos de Git. Los ejemplos seguros están en `.env.example`. En los `.env` comenta el bloque del perfil que no uses y deja activo solo uno. El bloque productivo ya considera el prefijo `/onlyoffice-colaborativo` y la URL de la API indicada; cambia a ese perfil antes de construir el frontend.
+
+Para producción, `APP_PUBLIC_URL` y `VITE_API_URL` deben ser `https://upsrc.buengobierno.gob.mx/onlyoffice-colaborativo` (sin `/api` al final): el backend y el frontend agregan `/api` a sus rutas. `APP_BASE_PATH=/onlyoffice-colaborativo` hace que Express acepte el prefijo externo. Configura el proxy para preservar ese prefijo hacia Node y habilitar WebSocket en `/onlyoffice-colaborativo/api/socket.io`. Sirve `frontend/dist` bajo `/onlyoffice-colaborativo/`. Configura `HOST=127.0.0.1` para que Node solo acepte conexiones del proxy local.
+
+El bloque de producción presupone que ONLYOFFICE Document Server será público en `https://upsrc.buengobierno.gob.mx`, mientras que el frontend queda bajo `/onlyoffice-colaborativo/`. El proxy HTTPS del servidor debe enviar `/` a ONLYOFFICE y el prefijo `/onlyoffice-colaborativo/` al frontend/API según corresponda. Si el Document Server tendrá otro host, cambia `ONLYOFFICE_URL` en `backend/.env` y `VITE_SOCKET_URL`/`FRONTEND_ORIGIN` según el despliegue.
+
+En `docker/.env`, `ONLYOFFICE_JWT_SECRET` debe coincidir exactamente con el del backend. Para el proxy TLS productivo, deja el contenedor ligado a `127.0.0.1:8080` y `127.0.0.1:8443`; el proxy debe enviar el tráfico público HTTPS de Document Server al puerto HTTP 8080 e incluir los encabezados `Host`, `X-Forwarded-Host` y `X-Forwarded-Proto`, además de permitir WebSocket. Desde `docker/`, usa `docker compose up -d`; el Compose contiene solo Document Server, no crea una base MySQL. El archivo conserva el tag previo `latest`; para producción fija el tag exacto de la versión que validaste.
+
+El usuario MySQL productivo necesita conectividad de red desde el servidor de Node hacia el host configurado, permisos sobre `mindbuengob` y lectura de `usuarios`/`view_usuarios_app_perfiles`. Con el perfil productivo activo, ejecuta una vez `npm run migrate:history` desde `backend/` para añadir columnas de historial si aún no existen y después inicia con `npm start`. No uses las credenciales productivas en un `.env` que se vaya a versionar; `.gitignore` excluye los `.env` y conserva sus ejemplos.
 
 ## Contraseñas
 

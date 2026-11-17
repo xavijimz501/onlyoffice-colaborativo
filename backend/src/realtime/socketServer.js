@@ -4,7 +4,8 @@ const documentRepository = require('../repositories/documentRepository');
 
 function initializeSocketServer(httpServer) {
   const io = new Server(httpServer, {
-    cors: { origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173' },
+    path: process.env.SOCKET_IO_PATH || '/socket.io',
+    cors: { origin: (process.env.FRONTEND_ORIGINS || process.env.FRONTEND_ORIGIN || 'http://localhost:5173').split(',').map((origin) => origin.trim()) },
   });
   const socketsByDocument = new Map();
   const documentBySocket = new Map();

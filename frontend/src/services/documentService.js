@@ -19,6 +19,14 @@ export async function getDocumentAudit(documentId) {
   return data.audit || []
 }
 
+export async function getDocumentHistory(documentId) {
+  return apiRequest(`/api/documents/${documentId}/history`)
+}
+
+export async function getDocumentHistoryVersion(documentId, versionNumber) {
+  return apiRequest(`/api/documents/${documentId}/history/${versionNumber}`)
+}
+
 export async function createDocument(title) {
   return apiRequest('/api/documents', { method: 'POST', body: JSON.stringify({ title }) })
 }

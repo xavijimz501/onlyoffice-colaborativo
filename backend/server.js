@@ -8,7 +8,8 @@ const { initializeSocketServer } = require('./src/realtime/socketServer');
 validateConfig();
 
 const port = Number(process.env.PORT || 3000);
+const host = process.env.HOST || '0.0.0.0';
 const server = http.createServer(app);
 const io = initializeSocketServer(server);
 app.set('io', io);
-server.listen(port, () => console.log(`Backend escuchando en http://localhost:${port}`));
+server.listen(port, host, () => console.log(`Backend escuchando en http://${host}:${port}`));

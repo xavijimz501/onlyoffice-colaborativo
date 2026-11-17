@@ -369,6 +369,52 @@
     font-size: 12px;
 }
 
+.history-change-button {
+    justify-self: start;
+    margin-top: 4px;
+    padding: 6px 9px;
+    border: 1px solid #b7c9e4;
+    border-radius: 5px;
+    background: #f5f9ff;
+    color: #174a82;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.history-change-button:hover {
+    background: #e8f1fc;
+}
+
+.history-pending {
+    color: #788394;
+    font-size: 11px;
+}
+
+.audit-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-top: 10px;
+    color: #657184;
+    font-size: 11px;
+}
+
+.audit-pagination button {
+    padding: 5px 7px;
+    border: 1px solid #d8dee8;
+    border-radius: 4px;
+    background: #fff;
+    color: #174a82;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.audit-pagination button:disabled {
+    color: #9ba4b1;
+    cursor: not-allowed;
+}
+
 .versions-panel {
     margin-top: 14px;
     color: #4d5969;
