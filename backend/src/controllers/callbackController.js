@@ -6,7 +6,9 @@ async function callback(req, res) {
     verifyCallbackToken(req);
     const result = await processCallback(req.body);
     if (!result.ignored && !result.duplicate) {
-      req.app.get('io')?.to(`document:${result.documentId}`).emit('audit:update');
+      req.app.get('io')?.to(`document:${result.documentId}`).emit('audit:update', {
+        saveRequestId: result.saveRequestId,
+      });
     }
     return res.json({ error: 0 });
   } catch (error) {

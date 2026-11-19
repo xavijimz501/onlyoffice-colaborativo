@@ -33,12 +33,8 @@ async function listAudit(documentId) {
     `SELECT a.id, a.action, a.created_at, a.modified_by AS idusuario,
             COALESCE(u.nombre, IF(a.modified_by IS NULL, 'Sistema', CONCAT('Usuario ', a.modified_by))) AS nombre,
             u.correo, v.version_number, v.source,
-            (SELECT MAX(vf.version_number)
-             FROM onlyoffice_document_versions vf
-             WHERE vf.document_id = v.document_id
-               AND vf.editor_key = v.editor_key
-               AND vf.source = 'close'
-               AND vf.changes_path IS NOT NULL) AS history_version
+            CASE WHEN v.source IN ('close', 'forcesave') AND v.changes_path IS NOT NULL
+                 THEN v.version_number ELSE NULL END AS history_version
      FROM onlyoffice_document_audit a
      LEFT JOIN ${usersTable} u ON u.idusuario = a.modified_by
      LEFT JOIN onlyoffice_document_versions v ON v.id = a.document_version_id
@@ -55,7 +51,8 @@ async function listHistoryVersions(documentId) {
             COALESCE(u.nombre, IF(v.modified_by IS NULL, 'Sistema', CONCAT('Usuario ', v.modified_by))) AS modified_name
      FROM onlyoffice_document_versions v
      LEFT JOIN ${usersTable} u ON u.idusuario = v.modified_by
-     WHERE v.document_id = ? AND v.source IN ('initial', 'close')
+     WHERE v.document_id = ?
+       AND (v.source IN ('initial', 'close') OR (v.source = 'forcesave' AND v.changes_path IS NOT NULL))
      ORDER BY version_number ASC`,
     [documentId],
   );
@@ -69,7 +66,8 @@ async function findHistoryVersion(documentId, versionNumber) {
             COALESCE(u.nombre, IF(v.modified_by IS NULL, 'Sistema', CONCAT('Usuario ', v.modified_by))) AS modified_name
      FROM onlyoffice_document_versions v
      LEFT JOIN ${usersTable} u ON u.idusuario = v.modified_by
-     WHERE v.document_id = ? AND v.version_number = ? AND v.source IN ('initial', 'close')
+     WHERE v.document_id = ? AND v.version_number = ?
+       AND (v.source IN ('initial', 'close') OR (v.source = 'forcesave' AND v.changes_path IS NOT NULL))
      LIMIT 1`,
     [documentId, versionNumber],
   );
@@ -80,7 +78,8 @@ async function findPreviousHistoryVersion(documentId, versionNumber) {
   const [rows] = await pool.execute(
     `SELECT id, version_number, file_path, file_type, editor_key, history_key
      FROM onlyoffice_document_versions
-     WHERE document_id = ? AND version_number < ? AND source IN ('initial', 'close')
+     WHERE document_id = ? AND version_number < ?
+       AND (source IN ('initial', 'close') OR (source = 'forcesave' AND changes_path IS NOT NULL))
      ORDER BY version_number DESC LIMIT 1`,
     [documentId, versionNumber],
   );
@@ -173,7 +172,7 @@ async function recordVersion({ documentId, filePath, modifiedBy, source, callbac
     }
 
     const versionNumber = docs[0].current_version + 1;
-    const nextHistoryKey = source === 'close' ? `doc-${documentId}-v${versionNumber}-${Date.now()}` : null;
+    const nextHistoryKey = `doc-${documentId}-v${versionNumber}-${Date.now()}`;
     const [versionResult] = await connection.execute(
       `INSERT INTO onlyoffice_document_versions
        (document_id, version_number, file_path, modified_by, source, editor_key, history_key, changes_path, history_data, file_type)

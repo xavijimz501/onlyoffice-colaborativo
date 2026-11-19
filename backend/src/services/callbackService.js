@@ -28,7 +28,7 @@ async function processCallback(body) {
   // userdata distingue cada guardado explícito y permite deduplicar los reintentos del callback.
   const callbackHash = crypto.createHash('sha256').update(`${key}|${status}|${url}|${userdata || ''}`).digest('hex');
   const filePath = path.join(process.env.STORAGE_DIR, 'versions', `document-${document.id}-${callbackHash}.${document.file_type}`);
-  const changesPath = status === 2 && changesurl
+  const changesPath = changesurl
     ? path.join(process.env.STORAGE_DIR, 'versions', `changes-${callbackHash}.zip`)
     : null;
   await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -48,6 +48,7 @@ async function processCallback(body) {
   if (result.merged && result.previousFilePath !== filePath) {
     await fs.rm(result.previousFilePath, { force: true }).catch(() => {});
   }
-  return { ...result, documentId: document.id };
+  const saveRequestId = /^user:\d+:save:([\w-]+)$/.exec(userdata || '')?.[1] || null;
+  return { ...result, documentId: document.id, saveRequestId };
 }
 module.exports = { processCallback };

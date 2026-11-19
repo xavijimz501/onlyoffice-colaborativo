@@ -31,12 +31,16 @@ export default function EditDocumento() {
   const [auditPage, setAuditPage] = useState(1)
   const [onlineUsers, setOnlineUsers] = useState([])
   const [editorReady, setEditorReady] = useState(false)
+  const [pendingSaveRequestId, setPendingSaveRequestId] = useState(null)
   const [viewingHistory, setViewingHistory] = useState(false)
   const [editorSession, setEditorSession] = useState(0)
   const editorRef = useRef(null)
+  const confirmedSaveRequestsRef = useRef(new Set())
+  const pendingSaveRequestIdRef = useRef(null)
   const activeDocument = documents.find((document) => String(document.id) === String(documentId))
   const auditPageCount = Math.max(1, Math.ceil(audit.length / AUDIT_PAGE_SIZE))
   const visibleAudit = audit.slice((auditPage - 1) * AUDIT_PAGE_SIZE, auditPage * AUDIT_PAGE_SIZE)
+  const inicial = user?.nombre?.trim().charAt(0).toUpperCase() || 'O';
 
   function resumeEditing() {
     setViewingHistory(false)
@@ -119,6 +123,9 @@ export default function EditDocumento() {
 
   useEffect(() => {
     setAuditPage(1)
+    pendingSaveRequestIdRef.current = null
+    confirmedSaveRequestsRef.current.clear()
+    setPendingSaveRequestId(null)
     if (!documentId) { setVersions([]); setAudit([]); return undefined }
     let cancelled = false
     Promise.all([getDocumentVersions(documentId), getDocumentAudit(documentId)])
@@ -134,7 +141,18 @@ export default function EditDocumento() {
     const socket = io(SOCKET_URL, { path: SOCKET_PATH, auth: { token }, transports: ['websocket', 'polling'] })
     socket.on('connect', () => socket.emit('document:join', documentId))
     socket.on('presence:update', setOnlineUsers)
-    socket.on('audit:update', () => refreshAudit(documentId))
+    socket.on('audit:update', async (event = {}) => {
+      await refreshAudit(documentId)
+      const requestId = event.saveRequestId
+      if (!requestId) return
+      if (pendingSaveRequestIdRef.current === requestId) {
+        pendingSaveRequestIdRef.current = null
+        setPendingSaveRequestId(null)
+        setMessage('Guardado confirmado.')
+      } else {
+        confirmedSaveRequestsRef.current.add(requestId)
+      }
+    })
     socket.on('connect_error', () => setError('No se pudo conectar al canal de colaboración.'))
     return () => { socket.disconnect(); setOnlineUsers([]) }
   }, [documentId, token, editorReady])
@@ -169,7 +187,20 @@ export default function EditDocumento() {
     setMessage('')
     try {
       const result = await saveDocument(documentId)
-      setMessage(result.saved ? 'Guardado solicitado; el historial se actualizará al confirmar ONLYOFFICE.' : result.message)
+      if (result.saved && result.requestId) {
+        pendingSaveRequestIdRef.current = result.requestId
+        setPendingSaveRequestId(result.requestId)
+        if (confirmedSaveRequestsRef.current.delete(result.requestId)) {
+          pendingSaveRequestIdRef.current = null
+          setPendingSaveRequestId(null)
+          setMessage('Guardado confirmado por ONLYOFFICE')
+          await refreshAudit()
+        } else {
+          setMessage('Guardado solicitado.')
+        }
+      } else {
+        setMessage(result.message)
+      }
       if (!result.saved) await refreshAudit()
     } catch (cause) { setError(cause.message) }
     finally { setSaving(false) }
@@ -177,7 +208,7 @@ export default function EditDocumento() {
 
   async function handleShowChanges(entry) {
     if (!entry.history_version) {
-      setMessage('La comparación coloreada estará disponible cuando se cierre la sesión de edición del documento.')
+      setMessage('ONLYOFFICE guardó la versión, pero no entregó el archivo de comparación para este cambio.')
       return
     }
     try {
@@ -220,10 +251,10 @@ export default function EditDocumento() {
               <>
                 <div className="brand-header">
                   <div className="brand-info">
-                    <div className="brand-mark">O</div>
+                    <div className="brand-mark">{inicial}</div>
                     <div className="brand-copy">
                       <strong>{activeDocument?.title || 'Editor colaborativo'}</strong>
-                      <span>{user.nombre} · {user.correo}</span>
+                      <span>{user?.nombre} · {user?.correo}</span>
                     </div>
                   </div>
 
@@ -231,9 +262,9 @@ export default function EditDocumento() {
                     <button
                       className={`back-to-documents editor-action-button${viewingHistory ? ' editor-mode-button' : ' toolbar-button primary'}`}
                       onClick={viewingHistory ? resumeEditing : handleSave}
-                      disabled={viewingHistory ? !editorReady : saving || !editorReady}
+                      disabled={viewingHistory ? !editorReady : saving || !editorReady || Boolean(pendingSaveRequestId)}
                     >
-                      {viewingHistory ? 'Seguir editando' : saving ? 'Guardando…' : 'Guardar'}
+                      {viewingHistory ? 'Seguir editando' : saving ? 'Guardando…' : pendingSaveRequestId ? 'Confirmando…' : 'Guardar'}
                     </button>
                   )}
                 </div>
@@ -248,7 +279,7 @@ export default function EditDocumento() {
                   {audit.length === 0 ? <p className="empty-state">Aún no hay modificaciones registradas.</p> : <>
                     <ol className="audit-list">{visibleAudit.map((entry) => <li key={entry.id}>
                       <strong>{entry.nombre}</strong><span>{auditLabel(entry.action)}</span><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}</time>
-                      {entry.history_version ? <button className="history-change-button" onClick={() => handleShowChanges(entry)}>Ver cambios en el documento</button> : entry.action !== 'document_created' && <small className="history-pending">Disponible al cerrar el documento de edición</small>}
+                      {entry.history_version ? <button className="history-change-button" onClick={() => handleShowChanges(entry)}>Ver cambios en el documento</button> : entry.action !== 'document_created' && <small className="history-pending">ONLYOFFICE aún no entregó la comparación de este guardado.</small>}
                     </li>)}</ol>
                     {audit.length > AUDIT_PAGE_SIZE && <nav className="audit-pagination" aria-label="Paginación del historial">
                       <button type="button" onClick={() => setAuditPage((page) => Math.max(1, page - 1))} disabled={auditPage === 1}><i class="snd__icono snd-arrow--left icono--24" aria-hidden="true"></i></button>
