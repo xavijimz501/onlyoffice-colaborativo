@@ -31,10 +31,17 @@ export default function EditDocumento() {
   const [auditPage, setAuditPage] = useState(1)
   const [onlineUsers, setOnlineUsers] = useState([])
   const [editorReady, setEditorReady] = useState(false)
+  const [viewingHistory, setViewingHistory] = useState(false)
+  const [editorSession, setEditorSession] = useState(0)
   const editorRef = useRef(null)
   const activeDocument = documents.find((document) => String(document.id) === String(documentId))
   const auditPageCount = Math.max(1, Math.ceil(audit.length / AUDIT_PAGE_SIZE))
   const visibleAudit = audit.slice((auditPage - 1) * AUDIT_PAGE_SIZE, auditPage * AUDIT_PAGE_SIZE)
+
+  function resumeEditing() {
+    setViewingHistory(false)
+    setEditorSession((session) => session + 1)
+  }
 
   useEffect(() => {
     let active = true
@@ -61,6 +68,7 @@ export default function EditDocumento() {
     let cancelled = false
     setEditorReady(false)
     setOnlineUsers([])
+    setViewingHistory(false)
     if (!user || !documentId) return undefined
 
     async function initializeEditor() {
@@ -80,8 +88,10 @@ export default function EditDocumento() {
               try {
                 const history = await getDocumentHistory(documentId)
                 editor?.refreshHistory(history)
+                setViewingHistory(true)
               } catch (cause) { setError(`No se pudo cargar el historial: ${cause.message}`) }
             },
+            onRequestHistoryClose: resumeEditing,
             onRequestHistoryData: async (event) => {
               try {
                 const versionData = await getDocumentHistoryVersion(documentId, event.data)
@@ -105,7 +115,7 @@ export default function EditDocumento() {
       editor?.destroyEditor()
       if (editorRef.current === editor) editorRef.current = null
     }
-  }, [documentId, user])
+  }, [documentId, user, editorSession])
 
   useEffect(() => {
     setAuditPage(1)
@@ -159,7 +169,7 @@ export default function EditDocumento() {
     setMessage('')
     try {
       const result = await saveDocument(documentId)
-      setMessage(result.saved ? 'Guardado solicitado; auditoría se actualizará al confirmar ONLYOFFICE.' : result.message)
+      setMessage(result.saved ? 'Guardado solicitado; el historial se actualizará al confirmar ONLYOFFICE.' : result.message)
       if (!result.saved) await refreshAudit()
     } catch (cause) { setError(cause.message) }
     finally { setSaving(false) }
@@ -174,6 +184,7 @@ export default function EditDocumento() {
       const history = await getDocumentHistory(documentId)
       // refreshHistory selecciona la revisión de esta entrada en la lista nativa de ONLYOFFICE.
       editorRef.current?.refreshHistory({ ...history, currentVersion: Number(entry.history_version) })
+      setViewingHistory(true)
     } catch (cause) { setError(`No se pudo abrir la comparación: ${cause.message}`) }
   }
 
@@ -184,11 +195,11 @@ export default function EditDocumento() {
       <HeaderGobMX />
       <NavbarGobMX />
       <main className="app-shell" id="mainContent">
-        <header className="topbar">
+        {/* <header className="topbar"
           <div className="brand-mark">O</div>
           <div className="brand-copy"><strong>{activeDocument?.title || 'Editor colaborativo'}</strong><span>{user.nombre} · {user.correo}</span></div>
           {documentId && <button className="toolbar-button primary" onClick={handleSave} disabled={saving || !editorReady}>{saving ? 'Guardando…' : 'Guardar'}</button>}
-        </header>
+        </header> */}
 
         {error && <div className="error-banner" role="alert">{error}</div>}
         {message && <div className="info-banner" role="status">{message}</div>}
@@ -207,7 +218,27 @@ export default function EditDocumento() {
               </section>
             ) : (
               <>
-                <button className="back-to-documents" onClick={() => { setDocumentId(null); setMessage('') }}>← Documentos disponibles</button>
+                <div className="brand-header">
+                  <div className="brand-info">
+                    <div className="brand-mark">O</div>
+                    <div className="brand-copy">
+                      <strong>{activeDocument?.title || 'Editor colaborativo'}</strong>
+                      <span>{user.nombre} · {user.correo}</span>
+                    </div>
+                  </div>
+
+                  {documentId && (
+                    <button
+                      className={`back-to-documents editor-action-button${viewingHistory ? ' editor-mode-button' : ' toolbar-button primary'}`}
+                      onClick={viewingHistory ? resumeEditing : handleSave}
+                      disabled={viewingHistory ? !editorReady : saving || !editorReady}
+                    >
+                      {viewingHistory ? 'Seguir editando' : saving ? 'Guardando…' : 'Guardar'}
+                    </button>
+                  )}
+                </div>
+
+                <button className="back-to-documents" onClick={() => { setDocumentId(null); setMessage('') }}>← Cerrar editor</button>
                 <section className="sidebar-section">
                   <h2>Usuarios en línea <span className="count-badge">{onlineUsers.length}</span></h2>
                   {onlineUsers.length === 0 ? <p className="empty-state">Conectando al documento…</p> : <ul className="online-list">{onlineUsers.map((onlineUser) => <li key={onlineUser.idusuario}><span className="presence-dot" />{onlineUser.nombre}{String(onlineUser.idusuario) === String(user.idusuario) && <small> (tú)</small>}</li>)}</ul>}
@@ -216,13 +247,13 @@ export default function EditDocumento() {
                   <h2>Historico</h2>
                   {audit.length === 0 ? <p className="empty-state">Aún no hay modificaciones registradas.</p> : <>
                     <ol className="audit-list">{visibleAudit.map((entry) => <li key={entry.id}>
-                    <strong>{entry.nombre}</strong><span>{auditLabel(entry.action)}</span><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}</time>
-                    {entry.history_version ? <button className="history-change-button" onClick={() => handleShowChanges(entry)}>Ver cambios en el documento</button> : entry.action !== 'document_created' && <small className="history-pending">Disponible al cerrar la sesión de edición</small>}
+                      <strong>{entry.nombre}</strong><span>{auditLabel(entry.action)}</span><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}</time>
+                      {entry.history_version ? <button className="history-change-button" onClick={() => handleShowChanges(entry)}>Ver cambios en el documento</button> : entry.action !== 'document_created' && <small className="history-pending">Disponible al cerrar el documento de edición</small>}
                     </li>)}</ol>
                     {audit.length > AUDIT_PAGE_SIZE && <nav className="audit-pagination" aria-label="Paginación del historial">
-                      <button type="button" onClick={() => setAuditPage((page) => Math.max(1, page - 1))} disabled={auditPage === 1}>Anterior</button>
+                      <button type="button" onClick={() => setAuditPage((page) => Math.max(1, page - 1))} disabled={auditPage === 1}><i class="snd__icono snd-arrow--left icono--24" aria-hidden="true"></i></button>
                       <span>Página {auditPage} de {auditPageCount} · {audit.length} cambios</span>
-                      <button type="button" onClick={() => setAuditPage((page) => Math.min(auditPageCount, page + 1))} disabled={auditPage === auditPageCount}>Siguiente</button>
+                      <button type="button" onClick={() => setAuditPage((page) => Math.min(auditPageCount, page + 1))} disabled={auditPage === auditPageCount}><i class="snd__icono snd-arrow--right icono--24" aria-hidden="true"></i></button>
                     </nav>}
                   </>}
                   <details className="versions-panel"><summary>Versiones ({versions.length})</summary><ol>{versions.map((version) => <li key={version.version_number}><strong>v{version.version_number}</strong><span>{version.source === 'initial' ? 'Inicial' : version.source === 'close' ? 'Al cerrar' : 'Guardado'}</span><time>{new Date(version.created_at).toLocaleString('es-MX')}</time></li>)}</ol></details>

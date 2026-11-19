@@ -21,3 +21,5 @@ volumes:
   onlyoffice_lib:
   onlyoffice_db:
 
+    # docker compose up -d
+

@@ -54,15 +54,37 @@
     z-index: 1;
 }
 
+/* Contenedor general */
+.brand-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    /* Evita que el botón se estire al 100% del ancho */
+}
+
+/* Fila superior: brand-mark + brand-copy lado a lado */
+.brand-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    /* Espacio horizontal entre el logo y los textos */
+}
+
 .brand-mark {
-    display: grid;
+    display: flex;
     place-items: center;
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: 10px;
     color: white;
     background: #3157d5;
-    font-weight: 800;
+    font-weight: 700;
+
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    flex-shrink: 0;
+    /* Evita que el círculo/cuadro se deforme si el título es largo */
 }
 
 .brand-copy {
@@ -71,9 +93,21 @@
     gap: 2px;
 }
 
+.brand-copy strong {
+    font-size: 0.95rem;
+    line-height: 1.2;
+}
+
 .brand-copy span {
     color: #7b8494;
-    font-size: 12px;
+    font-size: 0.8rem;
+    opacity: 0.75;
+}
+
+/* Espaciado arriba y abajo exclusivo para el botón Guardar */
+.brand-header .toolbar-button.primary {
+    margin-top: 14px;
+    margin-bottom: 14px;
 }
 
 .document-picker {
@@ -301,8 +335,16 @@
     border-radius: 7px;
     background: #fff;
     color: #39485d;
-    text-align: left;
+    text-align: center;
     cursor: pointer;
+}
+
+.brand-header .editor-mode-button {
+    margin-top: 14px;
+    margin-bottom: 14px;
+    text-align: center;
+    color: white;
+    background-color: darkgoldenrod;
 }
 
 .sidebar-section+.sidebar-section {
@@ -612,4 +654,12 @@
     margin-left: auto;
     padding-right: 1.25rem;
     padding-left: 1.25rem;
+}
+
+.brand-header .editor-action-button {
+    width: 100%;
+    margin-top: 14px;
+    margin-bottom: 14px;
+    padding: 9px 10px;
+    text-align: center;
 }
