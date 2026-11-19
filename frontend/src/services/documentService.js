@@ -31,6 +31,17 @@ export async function createDocument(title) {
   return apiRequest('/api/documents', { method: 'POST', body: JSON.stringify({ title }) })
 }
 
+export async function uploadDocument(file) {
+  return apiRequest('/api/documents/upload', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'X-File-Name': encodeURIComponent(file.name),
+    },
+    body: file,
+  })
+}
+
 export async function saveDocument(documentId) {
   return apiRequest(`/api/documents/${documentId}/save`, { method: 'POST' })
 }

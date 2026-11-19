@@ -96,20 +96,20 @@ async function findHistoryFile(documentId, versionNumber, kind) {
   return rows[0] || null;
 }
 
-async function createDocument({ title, filePath, editorKey, userId }) {
+async function createDocument({ title, filePath, editorKey, userId, fileType = 'docx' }) {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
     const [result] = await connection.execute(
       `INSERT INTO onlyoffice_documents (title, file_type, storage_path, current_version, editor_key)
-       VALUES (?, 'docx', ?, 1, ?)`,
-      [title, filePath, editorKey],
+       VALUES (?, ?, ?, 1, ?)`,
+      [title, fileType, filePath, editorKey],
     );
     const [versionResult] = await connection.execute(
       `INSERT INTO onlyoffice_document_versions
        (document_id, version_number, file_path, modified_by, source, editor_key, history_key, file_type)
-       VALUES (?, 1, ?, ?, 'initial', ?, ?, 'docx')`,
-      [result.insertId, filePath, userId, editorKey, editorKey],
+       VALUES (?, 1, ?, ?, 'initial', ?, ?, ?)`,
+      [result.insertId, filePath, userId, editorKey, editorKey, fileType],
     );
     await connection.execute(
       'INSERT INTO onlyoffice_document_audit (document_id, modified_by, action, document_version_id) VALUES (?, ?, ?, ?)',

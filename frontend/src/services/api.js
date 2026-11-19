@@ -18,7 +18,7 @@ export async function apiRequest(path, options = {}) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
     }
-    throw new Error(data.error || 'No fue posible completar la solicitud.')
+    throw new Error(data.message || data.error || 'No fue posible completar la solicitud.')
   }
   return data
 }

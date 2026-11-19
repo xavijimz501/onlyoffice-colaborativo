@@ -2,6 +2,7 @@ const express = require('express');
 const controller = require('../controllers/documentController');
 const { requireAuth } = require('../middleware/requireAuth');
 const router = express.Router();
+router.post('/upload', requireAuth, express.raw({ type: 'application/octet-stream', limit: '25mb' }), controller.upload);
 router.post('/', requireAuth, controller.create);
 router.get('/', requireAuth, controller.list);
 router.get('/:id/editor-config', requireAuth, controller.editorConfig);

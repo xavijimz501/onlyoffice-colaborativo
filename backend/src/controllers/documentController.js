@@ -44,6 +44,19 @@ async function create(req, res, next) {
   } catch (error) { return next(error); }
 }
 
+async function upload(req, res, next) {
+  try {
+    const fileName = req.get('X-File-Name') || '';
+    const result = await documentService.uploadDocument(fileName, req.body, req.user.idusuario);
+    return res.status(201).json(result);
+  } catch (error) {
+    if (error.code === 'INVALID_DOCUMENT_UPLOAD') {
+      return res.status(400).json({ error: error.code, message: error.message });
+    }
+    return next(error);
+  }
+}
+
 async function audit(req, res, next) {
   try {
     const result = await documentService.getAudit(req.params.id);
@@ -102,4 +115,4 @@ async function historyFile(req, res, next) {
     return result.stream.pipe(res);
   } catch (error) { return next(error); }
 }
-module.exports = { list, editorConfig, content, versions, audit, create, save, history, historyVersion, historyFile };
+module.exports = { list, editorConfig, content, versions, audit, create, upload, save, history, historyVersion, historyFile };

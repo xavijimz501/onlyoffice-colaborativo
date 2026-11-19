@@ -509,6 +509,17 @@
     margin-bottom: 12px;
 }
 
+.file-upload-input {
+    display: none;
+}
+
+.upload-document-button {
+    width: 100%;
+    margin-bottom: 12px;
+    background-color: #0AAA40;
+    color: white;
+}
+
 .logout-button {
     border: 0;
     background: transparent;

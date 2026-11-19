@@ -6,7 +6,7 @@ import NavbarGobMX from '../components/navbar'
 import FooterGobMX from '../components/footer'
 import { SOCKET_PATH, SOCKET_URL } from '../services/api'
 import { getCurrentUser } from '../services/authService'
-import { createDocument, getDocumentAudit, getDocumentEditorConfig, getDocumentHistory, getDocumentHistoryVersion, getDocuments, getDocumentVersions, saveDocument } from '../services/documentService'
+import { createDocument, getDocumentAudit, getDocumentEditorConfig, getDocumentHistory, getDocumentHistoryVersion, getDocuments, getDocumentVersions, saveDocument, uploadDocument } from '../services/documentService'
 import '../App.css'
 
 const AUDIT_PAGE_SIZE = 8
@@ -24,6 +24,7 @@ export default function EditDocumento() {
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [documentId, setDocumentId] = useState(null)
   const [documents, setDocuments] = useState([])
   const [versions, setVersions] = useState([])
@@ -35,6 +36,7 @@ export default function EditDocumento() {
   const [viewingHistory, setViewingHistory] = useState(false)
   const [editorSession, setEditorSession] = useState(0)
   const editorRef = useRef(null)
+  const uploadInputRef = useRef(null)
   const confirmedSaveRequestsRef = useRef(new Set())
   const pendingSaveRequestIdRef = useRef(null)
   const activeDocument = documents.find((document) => String(document.id) === String(documentId))
@@ -181,6 +183,25 @@ export default function EditDocumento() {
     finally { setCreating(false) }
   }
 
+  async function handleUploadDocument(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setError('')
+    setMessage('')
+    try {
+      const result = await uploadDocument(file)
+      setDocuments(await getDocuments())
+      setDocumentId(String(result.id))
+      setMessage(`Se cargó “${file.name}”. Ya puedes editarlo.`)
+    } catch (cause) {
+      setError(cause.message)
+    } finally {
+      setUploading(false)
+      event.target.value = ''
+    }
+  }
+
   async function handleSave() {
     if (!documentId) return
     setSaving(true)
@@ -245,7 +266,23 @@ export default function EditDocumento() {
               <section className="sidebar-section document-list-section">
                 <h2>Documentos disponibles <span className="count-badge">{documents.length}</span></h2>
                 <button className="toolbar-button primary new-document-button" onClick={handleCreateDocument} disabled={creating}>{creating ? 'Creando…' : 'Nuevo documento'}</button>
-                {documents.length === 0 ? <p className="empty-state">No hay documentos todavía. Crea uno para iniciar.</p> : <ul className="document-list">{documents.map((document) => <li key={document.id}><button className="document-list-item" onClick={() => { setMessage(''); setDocumentId(String(document.id)) }}><strong>{document.title}</strong><span>Documento {document.id} · versión {document.current_version}</span></button></li>)}</ul>}
+                <input
+                  ref={uploadInputRef}
+                  className="file-upload-input"
+                  type="file"
+                  accept=".docx,.xlsx,.pptx"
+                  onChange={handleUploadDocument}
+                  aria-label="Seleccionar archivo Office para subir"
+                />
+                <button
+                  type="button"
+                  className="toolbar-button upload-document-button"
+                  onClick={() => uploadInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? 'Subiendo…' : 'Subir documento'}
+                </button>
+                {documents.length === 0 ? <p className="empty-state">No hay documentos todavía. Crea o sube uno para iniciar.</p> : <ul className="document-list">{documents.map((document) => <li key={document.id}><button className="document-list-item" onClick={() => { setMessage(''); setDocumentId(String(document.id)) }}><strong>{document.title}</strong><span>Documento {document.id} · versión {document.current_version}</span></button></li>)}</ul>}
               </section>
             ) : (
               <>

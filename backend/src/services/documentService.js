@@ -108,11 +108,52 @@ async function createDocument(title, userId) {
   const editorKey = `new-${crypto.randomUUID()}`;
   await fsp.copyFile(template, filePath);
   try {
-    return await documentRepository.createDocument({ title, filePath, editorKey, userId });
+    return await documentRepository.createDocument({ title, filePath, editorKey, userId, fileType: 'docx' });
   } catch (error) {
     await fsp.rm(filePath, { force: true });
     throw error;
   }
+}
+
+async function uploadDocument(fileNameHeader, fileBuffer, userId) {
+  let fileName;
+  try { fileName = decodeURIComponent(fileNameHeader); }
+  catch { throw invalidUpload('El nombre del archivo no es válido.'); }
+
+  const safeName = path.basename(fileName.replace(/\\/g, '/')).trim();
+  const fileType = path.extname(safeName).slice(1).toLowerCase();
+  const supportedTypes = new Set(['docx', 'xlsx', 'pptx']);
+  if (!safeName || !supportedTypes.has(fileType)) {
+    throw invalidUpload('Selecciona un documento .docx, .xlsx o .pptx.');
+  }
+  if (!Buffer.isBuffer(fileBuffer) || fileBuffer.length === 0) {
+    throw invalidUpload('El archivo está vacío o no se recibió correctamente.');
+  }
+  if (fileBuffer[0] !== 0x50 || fileBuffer[1] !== 0x4b) {
+    throw invalidUpload('El archivo no parece ser un documento Office válido.');
+  }
+
+  const title = path.basename(safeName, path.extname(safeName)).trim();
+  if (!title || title.length > 255) throw invalidUpload('El nombre del documento debe tener entre 1 y 255 caracteres.');
+
+  const storageRoot = path.resolve(process.env.STORAGE_DIR);
+  const documentsDirectory = path.join(storageRoot, 'documents');
+  await fsp.mkdir(documentsDirectory, { recursive: true });
+  const filePath = path.join(documentsDirectory, `${crypto.randomUUID()}.${fileType}`);
+  const editorKey = `new-${crypto.randomUUID()}`;
+  await fsp.writeFile(filePath, fileBuffer);
+  try {
+    return await documentRepository.createDocument({ title, filePath, editorKey, userId, fileType });
+  } catch (error) {
+    await fsp.rm(filePath, { force: true });
+    throw error;
+  }
+}
+
+function invalidUpload(message) {
+  const error = new Error(message);
+  error.code = 'INVALID_DOCUMENT_UPLOAD';
+  return error;
 }
 
 async function requestSave(id, userId) {
@@ -138,5 +179,5 @@ async function requestSave(id, userId) {
 module.exports = {
   getDocuments, getEditorConfig, getDocumentStream, getVersions, getAudit,
   getHistory, getHistoryVersionData, getHistoryFile,
-  createDocument, requestSave,
+  createDocument, uploadDocument, requestSave,
 };

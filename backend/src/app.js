@@ -20,6 +20,10 @@ app.use(`${apiPath}/documents`, documentRoutes);
 app.use(`${apiPath}/onlyoffice`, callbackRoutes);
 app.use((error, _req, res, _next) => {
   console.error(error);
-  res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Ocurrió un error interno.' });
+  const status = error.status === 413 ? 413 : 500;
+  res.status(status).json({
+    error: status === 413 ? 'FILE_TOO_LARGE' : 'INTERNAL_ERROR',
+    message: status === 413 ? 'El archivo excede el límite de 25 MB.' : 'Ocurrió un error interno.',
+  });
 });
 module.exports = app;
