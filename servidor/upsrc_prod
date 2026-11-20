@@ -1,0 +1,2010 @@
+server {
+    listen 80;
+    server_name upsrc.buengobierno.gob.mx;
+    return 301 https://$host$request_uri;
+    server_tokens off;
+    add_header X-Frame-Options 'SAMEORIGIN';
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+
+}
+
+
+server {
+    listen 443 ssl;
+    server_name upsrc.buengobierno.gob.mx;
+    server_tokens off;
+    set $csp_nonce $request_id;
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header Content-Security-Policy 
+    "default-src 'self' blob: data: https://framework-gb.cdn.gob.mx https://fonts.astatic.com www.gob.mx https://8x8.vc; 
+     style-src 'self' 'unsafe-inline' https://framework-gb.cdn.gob.mx https://fonts.astatic.com https://fonts.googleapis.com https://cdn.jsdelivr.net https://kit-pro.fontawesome.com https://translate.googleapis.com https://*.gstatic.com https://www.googletagmanager.com https://stackpath.bootstrapcdn.com https://www.juicer.io https://react-tweet.vercel.app; 
+     script-src 'self' 'unsafe-inline' 'unsafe-eval' https://framework-gb.cdn.gob.mx https://www.google-analytics.com https://ajax.googleapis.com https://8x8.vc https://upsrc.buengobierno.gob.mx https://upsrc.buengobierno.gob.mx/onlyoffice https://cdn.jsdelivr.net https://translate.google.com https://translate.googleapis.com https://*.gstatic.com https://translate-pa.googleapis.com https://www.googletagmanager.com https://stackpath.bootstrapcdn.com https://www.google.com https://*.x.com https://*.twitter.com https://www.juicer.io https://widget.rss.app https://connect.facebook.net https://www.instagram.com; 
+     img-src 'self' data: https://framework-gb.cdn.gob.mx https://www.gob.mx https://ajax.googleapis.com https://www.google-analytics.com https://8x8.vc https://*.facebook.com https://*.cdninstagram.com https://*.instagram.com blob: https://cdn.jsdelivr.net https://translate.googleapis.com https://*.gstatic.com https://www.google.com https://translate.google.com https://www.juicer.io https://juicer.io https://pbs.twimg.com https://*.fbcdn.net https://*.cdninstagram.com https://react-tweet.vercel.app https://flagcdn.com;
+     font-src 'self' https://framework-gb.cdn.gob.mx https://fonts.astatic.com https://fonts.gstatic.com https://kit-pro.fontawesome.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://stackpath.bootstrapcdn.com data:; 
+     connect-src 'self'  https://framework-gb.cdn.gob.mx https://www.google-analytics.com https://8x8.vc https://upsrc.buengobierno.gob.mx wss://upsrc.buengobierno.gob.mx https://upsrc.buengobierno.gob.mx/onlyoffice https://translate.googleapis.com https://translate.google.com https://translate-pa.googleapis.com https://www.google.com https://www.juicer.io https://corsproxy.io https://rss.app https://react-tweet.vercel.app https://cdn.jsdelivr.net; 
+     frame-src 'self' https://8x8.vc https://upsrc.buengobierno.gob.mx https://*.twitter.com https://www.juicer.io  https://www.facebook.com  https://*.facebook.com https://www.instagram.com https://*.instagram.com blob: data:;
+     media-src 'self' https://8x8.vc; object-src 'none'; base-uri 'self'; form-action 'self'; 
+     frame-ancestors 'self' https://upsrc.buengobierno.gob.mx; https://react-tweet.vercel.app;
+     upgrade-insecure-requests;" always;
+     set $nonce $request_id;
+
+
+   
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always; 
+
+    proxy_cookie_path / "/; HTTPOnly; Secure; SameSite=strict";
+    add_header X-Robots-Tag "index, follow" always;
+
+    # Configuración de tamaño para grandes archivos y tiempos de espera largos
+    client_body_buffer_size 1k;
+    client_header_buffer_size 1k;
+    client_max_body_size 200M;  # Asegura que los archivos grandes puedan ser subidos
+    large_client_header_buffers 2 1k;
+    client_body_timeout 60s;
+    client_header_timeout 60s;
+    send_timeout 60s;
+
+    ssl_certificate /etc/ssl/buengobierno.gob.mx/fullchain.cer;
+    ssl_certificate_key /etc/ssl/buengobierno.gob.mx/buengobierno.gob.mx.key;
+    
+    #ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE
+    ssl_prefer_server_ciphers on;
+    #ssl_ciphers ALL:!aNULL:!ADH:!eNULL:!LOW:!EXP:RC4+RSA:+HIGH:+MEDIUM;
+    ssl_protocols TLSv1.2 TLSv1.3; # Requires nginx >= 1.13.0 else use TLSv1.2
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
+  
+# Frontend Configuration
+root /var/React/ReunionesUPSRC/frontend/build;
+
+index index.html;
+
+location /favicon.ico {
+    try_files $uri =404;
+}
+
+location /reunionesupsrc/ {
+    alias /var/React/ReunionesUPSRC/frontend/build/;
+    index index.html;
+
+    try_files $uri $uri/ /reunionesupsrc/index.html;
+}
+
+# Archivos estáticos de Data Buen Gobierno
+location ^~ /databuengobierno/static/ {
+    alias /var/React/Data/front-data-buengobierno/build/static/;
+}
+
+# Aplicación React Data Buen Gobierno
+location ^~ /databuengobierno/ {
+    alias /var/React/Data/front-data-buengobierno/build/;
+    index index.html;
+    try_files $uri $uri/ /databuengobierno/index.html;
+}
+ location ~ ^/[0-9]+\.[0-9]+\.[^/]+/ {
+
+    proxy_pass http://127.0.0.1:8088;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+
+    proxy_set_header X-Forwarded-For
+        $proxy_add_x_forwarded_for;
+
+    proxy_set_header X-Forwarded-Proto
+        https;
+
+    proxy_set_header X-Forwarded-Host
+        $host;
+
+    proxy_read_timeout 3600;
+    proxy_connect_timeout 3600;
+    proxy_send_timeout 3600;
+}
+location = /onlyoffice {
+    return 301 /onlyoffice/;
+}
+
+# ONLYOFFICE Document Server: coincide con ONLYOFFICE_URL del backend.
+location = /onlyoffice/docs {
+    return 301 /onlyoffice/docs/;
+}
+
+location ^~ /onlyoffice/docs/ {
+    proxy_pass http://127.0.0.1:8088/;
+    proxy_http_version 1.1;
+
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host $http_host/onlyoffice/docs;
+    proxy_set_header X-Forwarded-Prefix /onlyoffice/docs;
+
+    proxy_read_timeout 3600;
+    proxy_connect_timeout 3600;
+    proxy_send_timeout 3600;
+    proxy_redirect off;
+}
+
+# API de Express y Socket.IO. Se conserva /onlyoffice al reenviar a Node.
+location ^~ /onlyoffice/api/ {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_read_timeout 3600;
+    proxy_connect_timeout 60;
+    proxy_send_timeout 3600;
+}
+
+# Frontend React: cubre solo las rutas que no coinciden con API o Document Server.
+location ^~ /onlyoffice/ {
+    alias /var/React/onlyoffice/frontend/dist/;
+    index index.html;
+    try_files $uri $uri/ /onlyoffice/index.html;
+}
+
+
+# ============================
+# RECURSOS GENERADOS POR ONLYOFFICE
+# ============================
+
+location /web-apps/ {
+
+    proxy_pass http://127.0.0.1:8088/web-apps/;
+
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+
+    proxy_set_header X-Forwarded-For
+        $proxy_add_x_forwarded_for;
+
+    proxy_set_header X-Forwarded-Proto
+        https;
+
+    proxy_read_timeout 3600;
+}
+
+
+location /sdkjs/ {
+
+    proxy_pass http://127.0.0.1:8088/sdkjs/;
+
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+
+    proxy_set_header X-Forwarded-For
+        $proxy_add_x_forwarded_for;
+
+    proxy_set_header X-Forwarded-Proto
+        https;
+
+    proxy_read_timeout 3600;
+}
+
+
+
+location /editor/api/documentosword/ {
+
+    proxy_pass http://127.0.0.1:5028/editor/api/documentosword/;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_read_timeout 3600;
+}
+location /editor/api/modificaciones/ {
+
+    proxy_pass http://127.0.0.1:5028/editor/api/modificaciones/;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_read_timeout 3600;
+}
+
+    location / {
+        try_files $uri /index.html;
+    }
+
+
+  location /editor {
+        alias /var/React/editor/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /editor/index.html;
+    }
+ location /editor/public/ {
+
+    proxy_pass http://127.0.0.1:5028;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Real-IP $remote_addr;
+
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+
+
+location /editor/socket.io/ {
+
+    proxy_pass http://127.0.0.1:5028;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Real-IP $remote_addr;
+
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+
+    proxy_read_timeout 86400;
+    proxy_send_timeout 86400;
+}
+location /editor/api/onlyoffice/callback/ {
+
+    proxy_pass http://127.0.0.1:5028;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    client_max_body_size 100M;
+
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+}
+location ^~ /onlyoffice/cache/ {
+
+    proxy_pass http://127.0.0.1:8088/cache/;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Host localhost;
+
+    proxy_set_header X-Real-IP $remote_addr;
+
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_read_timeout 3600;
+
+}
+location ^~ /editor/api/ {
+
+    proxy_pass http://127.0.0.1:5028;
+
+    proxy_http_version 1.1;
+
+    proxy_buffering off;
+
+    proxy_connect_timeout 60s;
+    proxy_send_timeout 120s;
+    proxy_read_timeout 120s;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+    proxy_set_header X-Forwarded-Host $host;
+
+    proxy_set_header X-Forwarded-Proto https;
+
+    client_max_body_size 100M;
+}
+
+
+
+
+
+
+
+ 
+location /libretranslate/ {
+
+    proxy_pass http://127.0.0.1:5500/;
+
+    proxy_http_version 1.1;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    add_header Access-Control-Allow-Origin *;
+    add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+    add_header Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization";
+
+    if ($request_method = OPTIONS) {
+        return 204;
+    }
+
+    proxy_connect_timeout 300;
+    proxy_send_timeout 300;
+    proxy_read_timeout 300;
+
+    client_max_body_size 50M;
+}
+
+
+
+    #location /prediccionworld {
+     
+        #alias /var/React/prediccionworld/frontend/build;
+        #index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        #try_files $uri /prediccionworld/index.html;
+    #}
+ #location /prediccionworld/socket.io/ {
+        #proxy_pass http://localhost:5040;
+        #proxy_http_version 1.1;
+        #proxy_set_header Upgrade $http_upgrade;
+        #proxy_set_header Connection "Upgrade"; 
+        #proxy_set_header Host $host;
+
+        #proxy_read_timeout 86400s;
+    #}
+
+#location /prediccionworld/api {
+    #proxy_pass http://localhost:5040;
+    #proxy_http_version 1.1;
+    #proxy_set_header Upgrade $http_upgrade;
+    #proxy_set_header Connection 'upgrade';
+    #proxy_set_header Host $host;
+    #proxy_cache_bypass $http_upgrade;
+
+    #add_header X-Content-Type-Options nosniff;
+    #add_header X-Frame-Options "SAMEORIGIN";
+
+    # Configurar encabezados CORS para permitir el acceso desde el frontend
+    #add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+    #add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+    #add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+    #add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+     # Responder correctamente a las solicitudes OPTIONS
+        #if ($request_method = 'OPTIONS') {
+            #add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+            #add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            #add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+            #add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            #add_header Content-Type 'text/plain charset=UTF-8';
+            #add_header Content-Length 0;
+            #return 204;
+        #}
+
+    #}
+     
+### informe-OIC-2025 
+    location /informe-OIC-2025{
+        alias /var/React/registro-ioic/frontend/dist;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /informe-OIC-2025/index.html;
+    }
+	location /conexionciudadana {
+        alias /var/React/conexionciudadana/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /conexionciudadana/index.html;
+    }
+
+	location /quejasdenuncias {
+        #alias /home/encuestas/React/quejasdenuncias/frontend/build;
+        alias /var/React/quejasdenuncias/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /quejasdenuncias/index.html;
+
+#        allow 172.19.0.1/32;
+#        allow 172.19.0.2/31;
+#        allow 172.19.0.4/30;
+#        allow 172.19.0.8/29;
+#        allow 172.19.0.16/28;
+#        allow 172.19.0.32/27;
+#        allow 172.19.0.64/26;
+#        allow 172.19.0.128/25;
+#        allow 172.19.1.0/24;
+#        allow 172.19.2.0/23;
+#        allow 172.19.4.0/22;
+#        allow 172.19.8.0/21;
+#        allow 172.19.16.0/20;
+#        allow 172.19.32.0/19;
+#        allow 172.19.64.0/18;
+#        allow 172.19.128.0/17;
+#        deny all;
+
+    }
+	
+	location /dosier {
+        alias /var/React/dosier/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /dosier/index.html;
+    }
+	
+
+        location /registroplenariasiderurgica {
+        alias /var/React/sistemaproyectos/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /registroplenariasiderurgica/index.html;
+    }
+	location /anticorrupcionygenero {
+        alias /var/React/anticorrupcionygenero/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /anticorrupcionygenero/index.html;
+    }
+	
+		location /vulnerabilidadmujeres {
+        alias /var/React/vulnerabilidadmujeres/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /vulnerabilidadmujeres/index.html;
+    }
+    ######## se comenta para dar de baja sitio inactivo
+	#   location /cuestionariooec {
+    #     alias /var/React/Cuestionariooec/frontend/build;
+    #     index index.html;
+    
+    #     # Permitir que React maneje el enrutamiento
+    #     try_files $uri /cuestionariooec/index.html;
+    # }
+######## se comenta para dar de baja sitio inactivo
+    # location /registroorganismos {
+    #     alias /var/React/registroorganismos/frontend/dist;
+    #     index index.html;
+    
+    #     # Permitir que React maneje el enrutamiento
+    #     try_files $uri /registroorganismos/index.html;
+    # }
+	 # Rutas para servir imágenes del backend de anticorrupcionygenero
+#    location /perfil/ {
+#        proxy_pass http://localhost:5011;
+#        proxy_http_version 1.1;
+#        proxy_set_header Upgrade $http_upgrade;
+#        proxy_set_header Connection 'upgrade';
+#        proxy_set_header Host $host;
+#        proxy_cache_bypass $http_upgrade;
+#    }
+
+    location /anticorrupcionygenero/public/ {
+        proxy_pass http://localhost:5011;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location /gestioninformes {
+        alias /var/React/gestioninformes/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /gestioninformes/index.html;
+    }
+        location /gestioninformes/public/ {
+        proxy_pass http://localhost:5016;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+# para preuabs 
+      location /testgi {
+        alias /var/React/testgi/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /testgi/index.html;
+    }
+        location /testgi/public/ {
+        proxy_pass http://localhost:5037;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+     # Location for /responsabilidadcompartida
+    location /responsabilidadcompartida {
+        alias /var/React/responsabilidadcompartida/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /responsabilidadcompartida/index.html;
+    }
+
+    #sitio cumplemx 
+    # Location for /responsabilidadcompartida/cumplemx
+    location /responsabilidadcompartida/cumplemx {
+        alias /var/React/cumplemx/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /responsabilidadcompartida/cumplemx/index.html;
+    }
+
+    
+ # Rutas para servir imágenes del backend de responsabilidadcompartida
+   location /responsabilidadcompartida/cumplemx/public/ {
+        proxy_pass http://localhost:5013;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+	
+        #sitio gobiernoconecta 
+    # Location for /responsabilidadcompartida/gobiernoconecta
+    location /responsabilidadcompartida/gobiernoconecta {
+        alias /var/React/gobiernoconecta/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /responsabilidadcompartida/gobiernoconecta/index.html;
+    }
+
+    location /responsabilidadcompartida/gobiernoconecta/public/ {
+        proxy_pass http://localhost:5014;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+	
+    location /responsabilidadcompartida/cabildeo {
+        alias /var/React/cabildeo/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /responsabilidadcompartida/cabildeo/index.html;
+    }
+
+    location /responsabilidadcompartida/cabildeo/public/ {
+        proxy_pass http://localhost:5015;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+    location /comunidadregional {
+        alias /var/React/comunidadregional/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /comunidadregional/index.html;
+    }
+    location /comunidadregional/public/ {
+        proxy_pass http://localhost:5020;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location = /talleres {
+    return 301 /talleres/;
+}
+
+location /talleres/ {
+    alias /var/React/tallerropacontractualimss/frontend/dist/;
+    index index.html;
+
+    try_files $uri $uri/ /talleres/index.html;
+}
+
+location /tallerropacontractualimss/public/ {
+    proxy_pass http://localhost:5024;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+}
+
+    location /cooperaciontecnicainterna {
+        alias /var/React/cooperaciontecnicainterna/frontend/dist;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /cooperaciontecnicainterna/index.html;
+    }
+            location /cooperaciontecnicainterna/public/ {
+        proxy_pass http://localhost:5024;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location /cooperaciontecnicainterna/perfil/ {
+            proxy_pass http://localhost:5024/cooperaciontecnicainterna/perfil/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location /cooperaciontecnicainterna/public/perfil/ {
+        proxy_pass http://localhost:5024;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+    location /cooperaciontecnicainterna/eventos/ {
+        proxy_pass http://localhost:5024/cooperaciontecnicainterna/eventos/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+
+    location /semillerosdelahonestidad {
+        alias /var/React/semilleros/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /semillerosdelahonestidad/index.html;
+    }
+
+    location /registrofocal {
+        alias /var/React/registrofocal/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /registrofocal/index.html;
+    }
+        location /registroosc {
+        alias /var/React/registroosc/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /registroosc/index.html;
+    }
+     location /registrotaller {
+        alias /var/React/registrotaller/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /registrotaller/index.html;
+    }
+
+
+    
+         location /registroproyectoacero {
+        alias /var/React/registroproyectoacero/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /registroproyectoacero/index.html;
+    }
+    location /encuentrodenegocios {
+        alias /var/React/comprastextiles/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /encuentrodenegocios/index.html;
+    }
+      location /evaluaciondenegocios {
+        alias /var/React/evaluaciondenegocios/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /evaluaciondenegocios/index.html;
+    }
+
+ location /comprastextiles/public/ {
+        proxy_pass http://localhost:5034;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location ^~ /honestiplay/ {
+        alias /var/React/honestiplay/frontend/dist/;
+
+        # archivos estáticos (JS, CSS, imágenes)
+        try_files $uri $uri/ /honestiplay/index.html;
+    }
+
+    # location ^~ /encuestaconexion/ {
+    #     alias /var/React/encuestaconexion/frontend/dist/;
+
+    #     # archivos estáticos (JS, CSS, imágenes)
+    #     try_files $uri $uri/ /encuestaconexion/index.html;
+    # }
+        location ^~ /encuesta/ {
+        alias /var/React/encuestaconexion/frontend/dist/;
+
+        # archivos estáticos (JS, CSS, imágenes)
+        try_files $uri $uri/ /encuesta/index.html;
+
+        sub_filter_types text/html;
+        sub_filter_once off;
+        sub_filter '__NONCE__' '$csp_nonce';
+    }
+
+    location ^~ /conexionplay/ {
+        alias /var/React/conexionplay/frontend/dist/;
+
+        # archivos estáticos (JS, CSS, imágenes)
+        try_files $uri $uri/ /conexionplay/index.html;
+    }
+       
+#     location /testdata {
+#        alias /var/React/testdata/frontend/build;
+#        index index.html;
+#    
+#        # Permitir que React maneje el enrutamiento
+#        try_files $uri /testdata/index.html;
+#
+#
+#    }
+      location /administrador {
+        #alias /var/React/Administrador/frontend/build;
+        alias /var/React/Administrador/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /administrador/index.html;
+    }
+   location /administrador/api {
+    proxy_pass http://localhost:5019;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options 'DENY';
+
+    # Configurar encabezados CORS para permitir el acceso desde el frontend
+    add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx";
+#    add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+     # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+
+    }
+######## se comenta para dar de baja sitio inactivo
+#    location /compraspublicasgenero {
+#         #alias /var/React/Administrador/frontend/build;
+#         alias /var/React/compraspublicasgenero/frontend/build;
+#         index index.html;
+    
+#         # Permitir que React maneje el enrutamiento
+#         try_files $uri /compraspublicasgenero/index.html;
+#     }
+
+#  location /compraspublicasgenero/public/ {
+#         proxy_pass http://localhost:5022;
+#         proxy_http_version 1.1;
+#         proxy_set_header Upgrade $http_upgrade;
+#         proxy_set_header Connection 'upgrade';
+#         proxy_set_header Host $host;
+#         proxy_cache_bypass $http_upgrade;
+#     }
+
+    # Servir PDFs y otros archivos estáticos
+# location /compraspublicasgenero/pdf/ {
+#     alias /var/React/compraspublicasgenero/frontend/build/pdf/;
+#     try_files $uri =404;
+# }
+
+######## se comenta para dar de baja sitio inactivo
+# location /diacontracorrupcion {
+#         #alias /var/React/Administrador/frontend/build;
+#         alias /var/React/diacontracorrupcion/frontend/build;
+#         index index.html;
+    
+#         # Permitir que React maneje el enrutamiento
+#         try_files $uri /diacontracorrupcion/index.html;
+#     }
+
+#  location /diacontracorrupcion/public/ {
+#         proxy_pass http://localhost:5022;
+#         proxy_http_version 1.1;
+#         proxy_set_header Upgrade $http_upgrade;
+#         proxy_set_header Connection 'upgrade';
+#         proxy_set_header Host $host;
+#         proxy_cache_bypass $http_upgrade;
+#     }
+
+######## se comenta para dar de baja sitio inactivo
+# location /jovenesserviciopublico {
+#         #alias /var/React/Administrador/frontend/build;
+#         alias /var/React/jovenesserviciopublico/frontend/build;
+#         index index.html;
+    
+#         # Permitir que React maneje el enrutamiento
+#         try_files $uri /jovenesserviciopublico/index.html;
+#     }
+
+#     location /jovenesserviciopublico/public/ {
+#         proxy_pass http://localhost:5022;
+#         proxy_http_version 1.1;
+#         proxy_set_header Upgrade $http_upgrade;
+#         proxy_set_header Connection 'upgrade';
+#         proxy_set_header Host $host;
+#         proxy_cache_bypass $http_upgrade;
+#     }
+
+
+######## se comenta para dar de baja sitio inactivo
+    # location /registrosemilleros {
+    #     #alias /var/React/Administrador/frontend/build;
+    #     alias /var/React/registrosemilleros/frontend/build;
+    #     index index.html;
+    
+    #     # Permitir que React maneje el enrutamiento
+    #     try_files $uri /registrosemilleros/index.html;
+    # }
+
+    # location /registrosemilleros/public/ {
+    #     proxy_pass http://localhost:5022;
+    #     proxy_http_version 1.1;
+    #     proxy_set_header Upgrade $http_upgrade;
+    #     proxy_set_header Connection 'upgrade';
+    #     proxy_set_header Host $host;
+    #     proxy_cache_bypass $http_upgrade;
+    # }
+  location /rally-corrupcion-cero {
+        #alias /var/React/Administrador/frontend/build;
+        alias /var/React/rally-corrupcion-cero/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /rally-corrupcion-cero/index.html;
+    }
+location /rally-corrupcion-cero/api {
+    proxy_pass http://localhost:5031;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options 'DENY';
+
+    # Configurar encabezados CORS para permitir el acceso desde el frontend
+    add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#    add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+     # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+
+    }
+    location /satisfaccionrallycorrupcion {
+        #alias /var/React/Administrador/frontend/build;
+        alias /var/React/satisfaccionrallycorrupcion/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /satisfaccionrallycorrupcion/index.html;
+    }
+
+    #location /pruebagoogle {
+        #alias /var/React/Administrador/frontend/build;
+        #alias /var/React/pruebagoogle/frontend/build;
+        #index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        #try_files $uri /pruebagoogle/index.html;
+    #}
+
+    location /pruebagoogle {
+        alias /var/React/pruebagoogle/frontend;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /pruebagoogle/index.html;
+    }
+
+    location /ruedanegocios {
+    alias /var/React/ruedanegocios/frontend/build;
+    index index.html;
+    try_files $uri /ruedanegocios/index.html;
+
+    # ✅ AQUÍ SÍ
+    set $nonce $request_id;
+    sub_filter_once off;
+    sub_filter_types text/html;
+    sub_filter '__NONCE__' $nonce;
+}
+location /ruedanegocios/public/ {
+        proxy_pass http://localhost:5030;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+
+ location /ruedanegocios/api {
+    proxy_pass http://localhost:5030;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options 'DENY';
+
+    # Configurar encabezados CORS para permitir el acceso desde el frontend
+    add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#    add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+     # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+
+    }
+
+    location /businesstobusiness {
+    alias /var/React/businesstobusiness/frontend/build;
+    index index.html;
+    try_files $uri /businesstobusiness/index.html;
+
+    # ✅ AQUÍ SÍ
+    set $nonce $request_id;
+    sub_filter_once off;
+    sub_filter_types text/html;
+    sub_filter '__NONCE__' $nonce;
+}
+location /businesstobusiness/public/ {
+        proxy_pass http://localhost:5038;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+
+ location /businesstobusiness/api {
+    proxy_pass http://localhost:5038;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options 'DENY';
+
+    # Configurar encabezados CORS para permitir el acceso desde el frontend
+    add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#    add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+     # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+
+    }
+  location /presidentesmunicipales {
+        alias /var/React/presidentesmunicipales/frontend/build;
+        index index.html;
+    
+        # Permitir que React maneje el enrutamiento
+        try_files $uri /presidentesmunicipales/index.html;
+    }
+   location /presidentesmunicipales/api {
+    proxy_pass http://localhost:5036;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options 'DENY';
+
+    # Configurar encabezados CORS para permitir el acceso desde el frontend
+    add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#    add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+     # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+
+    }
+    location /satisfaccionrallycorrupcion/api {
+    proxy_pass http://localhost:5023;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options 'DENY';
+
+    # Configurar encabezados CORS para permitir el acceso desde el frontend
+    add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#    add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+     # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+
+    }
+######## se comenta para dar de baja sitio inactivo
+#  location /compraspublicasgenero/api {
+#     proxy_pass http://localhost:5022;
+#     proxy_http_version 1.1;
+#     proxy_set_header Upgrade $http_upgrade;
+#     proxy_set_header Connection 'upgrade';
+#     proxy_set_header Host $host;
+#     proxy_cache_bypass $http_upgrade;
+
+#     add_header X-Content-Type-Options nosniff;
+#     add_header X-Frame-Options 'DENY';
+
+#     # Configurar encabezados CORS para permitir el acceso desde el frontend
+#     add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+# #    add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+#     add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+#     add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+#      # Responder correctamente a las solicitudes OPTIONS
+#         if ($request_method = 'OPTIONS') {
+#             add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+# #            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+#             add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+#             add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+#             add_header Content-Type 'text/plain charset=UTF-8';
+#             add_header Content-Length 0;
+#             return 204;
+#         }
+
+#     }
+
+
+#    location /controlrifa {
+#         #alias /var/React/Administrador/frontend/build;
+#         alias /home/encuestas/React/controlrifa/frontend/build;
+#         index index.html;
+    
+#         # Permitir que React maneje el enrutamiento
+#         try_files $uri /controlrifa/index.html;
+#     }
+
+#  location /controlrifa/public/ {
+#         proxy_pass http://localhost:5025;
+#         proxy_http_version 1.1;
+#         proxy_set_header Upgrade $http_upgrade;
+#         proxy_set_header Connection 'upgrade';
+#         proxy_set_header Host $host;
+#         proxy_cache_bypass $http_upgrade;
+#     }
+
+
+
+#      location /testdata/api {
+#    proxy_pass http://localhost:5400;
+#    proxy_http_version 1.1;
+#    proxy_set_header Upgrade $http_upgrade;
+#    proxy_set_header Connection 'upgrade';
+#    proxy_set_header Host $host;
+#    proxy_cache_bypass $http_upgrade;
+#
+#    add_header X-Content-Type-Options nosniff;
+#    add_header X-Frame-Options 'DENY';
+#
+#    # Configurar encabezados CORS para permitir el acceso desde el frontend
+#    add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+##    add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+#    add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+#    add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+#
+#     # Responder correctamente a las solicitudes OPTIONS
+#        if ($request_method = 'OPTIONS') {
+#            add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+##            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+#            add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+#            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+#            add_header Content-Type 'text/plain charset=UTF-8';
+#            add_header Content-Length 0;
+#            return 204;
+#        }
+#
+#    }
+
+############## Backend Configuration
+    location /databuengobierno/api {
+    proxy_pass http://localhost:5000;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options 'DENY';
+
+    # Configurar encabezados CORS para permitir el acceso desde el frontend
+    add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#    add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+     # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+
+    }
+
+    location /reunionesupsrc/api {
+    proxy_pass http://localhost:5004;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options 'DENY';
+
+    # Configurar encabezados CORS para permitir el acceso desde el frontend
+    add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#    add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+    add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+     # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+#            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+
+    }
+	location /conexionciudadana/api {
+        proxy_pass http://localhost:5009;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+        add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+            add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
+        location /quejasdenuncias/api {
+        proxy_pass http://localhost:5006;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+        add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+            add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+	
+	    location /dosier/api {
+        proxy_pass http://localhost:5010;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+        add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+            add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+	
+	     location /anticorrupcionygenero/api {
+        proxy_pass http://localhost:5011;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+        add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+            add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+	
+		    location /vulnerabilidadmujeres/api {
+        proxy_pass http://localhost:5012;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+        add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+            add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
+    ######## se comenta para dar de baja sitio inactivo
+    # location /cuestionariooec/api {
+    #     proxy_pass http://localhost:5017;
+    #        proxy_http_version 1.1;
+    #     proxy_set_header Upgrade $http_upgrade;
+    #     proxy_set_header Connection 'upgrade';
+    #     proxy_set_header Host $host;
+    #     proxy_cache_bypass $http_upgrade;
+
+    #     # Configurar encabezados CORS para permitir el acceso desde el frontend
+    #     add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+    #     add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+    #     add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+    #     # Responder correctamente a las solicitudes OPTIONS
+    #     if ($request_method = 'OPTIONS') {
+    #         add_header Access-Control-Allow-Origin "https://upsrc.buengobierno.gob.mx/";
+    #         add_header Access-Control-Allow-Methods 'POST, PUT, DELETE, OPTIONS';
+    #         add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+    #         add_header Content-Type 'text/plain charset=UTF-8';
+    #         add_header Content-Length 0;
+    #         return 204;
+    #     }
+    # }
+
+    
+    location /gestioninformes/api {
+        proxy_pass http://localhost:5016;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
+
+location /testgi/api {
+        proxy_pass http://localhost:5037;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
+    location /honestiplay/api/ {
+        proxy_pass http://localhost:5029/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+
+        # CORS
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
+    # WebSockets Socket.IO
+    location /honestiplay/api/socket.io/ {
+        proxy_pass http://localhost:5029;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade"; 
+        proxy_set_header Host $host;
+
+        proxy_read_timeout 86400s;
+    }
+
+    location /encuestaconexion/api/ {
+        proxy_pass http://localhost:5031;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+
+        # CORS
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
+    # WebSockets Socket.IO
+    location /encuestaconexion/api/socket.io/ {
+        proxy_pass http://localhost:5031;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade"; 
+        proxy_set_header Host $host;
+
+        proxy_read_timeout 86400s;
+    }
+
+    location /conexionplay/api/ {
+        proxy_pass http://localhost:5032;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+
+        # CORS
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
+    # WebSockets Socket.IO
+    location /conexionplay/api/socket.io/ {
+        proxy_pass http://localhost:5032;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade"; 
+        proxy_set_header Host $host;
+
+        proxy_read_timeout 86400s;
+    }
+  
+    
+    location /responsabilidadcompartida/api {
+        proxy_pass http://localhost:5007;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
+    location /responsabilidadcompartida/cumplemx/api {
+        proxy_pass http://localhost:5013;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
+      location /responsabilidadcompartida/gobiernoconecta/api {
+        proxy_pass http://localhost:5014;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
+      location /responsabilidadcompartida/cabildeo/api {
+        proxy_pass http://localhost:5015;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
+    location /comunidadregional/api {
+        proxy_pass http://localhost:5020;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
+         location /semillerosdelahonestidad/api {
+        proxy_pass http://localhost:5018;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
+    # location /registroorganismos/api {
+    #     proxy_pass http://localhost:5021;
+    #     proxy_http_version 1.1;
+    #     proxy_set_header Upgrade $http_upgrade;
+    #     proxy_set_header Connection 'upgrade';
+    #     proxy_set_header Host $host;
+    #     proxy_cache_bypass $http_upgrade;
+
+    #     # Configurar encabezados CORS para permitir el acceso desde el frontend
+    #     add_header Access-Control-Allow-Origin *;
+    #     add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+    #     add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+    #     # Responder correctamente a las solicitudes OPTIONS
+    #     if ($request_method = 'OPTIONS') {
+    #         add_header Access-Control-Allow-Origin *;
+    #         add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+    #         add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+    #         add_header Content-Type 'text/plain charset=UTF-8';
+    #         add_header Content-Length 0;
+    #         return 204;
+    #     }
+    # }
+
+    location /cooperaciontecnicainterna/api {
+        proxy_pass http://localhost:5024;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+
+    location /tallerropacontractualimss/api {
+        proxy_pass http://localhost:5042;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Configurar encabezados CORS para permitir el acceso desde el frontend
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+        add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+        # Responder correctamente a las solicitudes OPTIONS
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
+    }
+    
+
+
+
+
+        location /registrofocal/api {
+            proxy_pass http://localhost:5033;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+            if ($request_method = 'OPTIONS') {
+                add_header Access-Control-Allow-Origin *;
+                add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+                add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+                add_header Content-Type 'text/plain charset=UTF-8';
+                add_header Content-Length 0;
+                return 204;
+            }
+        }
+
+        location /registroosc/api {
+            proxy_pass http://localhost:5033;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+            if ($request_method = 'OPTIONS') {
+                add_header Access-Control-Allow-Origin *;
+                add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+                add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+                add_header Content-Type 'text/plain charset=UTF-8';
+                add_header Content-Length 0;
+                return 204;
+            }
+        }
+         location /registrotaller/api {
+            proxy_pass http://localhost:5033;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+            if ($request_method = 'OPTIONS') {
+                add_header Access-Control-Allow-Origin *;
+                add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+                add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+                add_header Content-Type 'text/plain charset=UTF-8';
+                add_header Content-Length 0;
+                return 204;
+            }
+        }
+          location /registroproyectoacero/api {
+            proxy_pass http://localhost:5033;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+            if ($request_method = 'OPTIONS') {
+                add_header Access-Control-Allow-Origin *;
+                add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+                add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+                add_header Content-Type 'text/plain charset=UTF-8';
+                add_header Content-Length 0;
+                return 204;
+            }
+        }
+     location /comprastextiles/api {
+            proxy_pass http://localhost:5034;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+            if ($request_method = 'OPTIONS') {
+                add_header Access-Control-Allow-Origin *;
+                add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+                add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+                add_header Content-Type 'text/plain charset=UTF-8';
+                add_header Content-Length 0;
+                return 204;
+            }
+        }
+        location /evaluaciondenegocios/api {
+            proxy_pass http://localhost:5035;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+            if ($request_method = 'OPTIONS') {
+                add_header Access-Control-Allow-Origin *;
+                add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+                add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+                add_header Content-Type 'text/plain charset=UTF-8';
+                add_header Content-Length 0;
+                return 204;
+            }
+        }
+
+#### se agrea el redirecionamiento hacia apache
+location /apache/ {
+    proxy_pass http://127.0.0.1:8090/;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+}
+
+  location /registroplenariasiderurgica/api {
+            proxy_pass http://localhost:5041;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+            if ($request_method = 'OPTIONS') {
+                add_header Access-Control-Allow-Origin *;
+                add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+                add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+                add_header Content-Type 'text/plain charset=UTF-8';
+                add_header Content-Length 0;
+                return 204;
+            }
+        }
+
+
+    location /informe-OIC-2025/api{
+      proxy_pass http://localhost:5044;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+            add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+            if ($request_method = 'OPTIONS') {
+                add_header Access-Control-Allow-Origin *;
+                add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+                add_header Access-Control-Allow-Headers 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+                add_header Content-Type 'text/plain charset=UTF-8';
+                add_header Content-Length 0;
+                return 204;
+            }
+    }
+
+}
+
+
