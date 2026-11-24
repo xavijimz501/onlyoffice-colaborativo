@@ -71,11 +71,10 @@ async function getHistory(id) {
 
 async function getHistoryVersionData(id, versionNumber) {
   const target = await documentRepository.findHistoryVersion(id, versionNumber);
-  if (!target || !target.changes_path) return null;
+  if (!target?.file_path) return null;
   const previous = await documentRepository.findPreviousHistoryVersion(id, versionNumber);
-  if (!previous) return null;
+  if (!previous?.file_path) return null;
   const params = {
-    changesUrl: historyFileUrl(id, versionNumber, 'changes'),
     fileType: target.file_type || 'docx',
     key: target.history_key,
     previous: {
@@ -85,6 +84,7 @@ async function getHistoryVersionData(id, versionNumber) {
     },
     url: historyFileUrl(id, versionNumber, 'document'),
     version: Number(target.version_number),
+    ...(target.changes_path ? { changesUrl: historyFileUrl(id, versionNumber, 'changes') } : {}),
   };
   return { ...params, token: jwt.sign(params, process.env.ONLYOFFICE_JWT_SECRET) };
 }

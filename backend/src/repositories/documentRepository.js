@@ -52,7 +52,6 @@ async function listHistoryVersions(documentId) {
      FROM onlyoffice_document_versions v
      LEFT JOIN ${usersTable} u ON u.idusuario = v.modified_by
      WHERE v.document_id = ?
-       AND (v.source IN ('initial', 'close') OR (v.source = 'forcesave' AND v.changes_path IS NOT NULL))
      ORDER BY version_number ASC`,
     [documentId],
   );
@@ -67,7 +66,6 @@ async function findHistoryVersion(documentId, versionNumber) {
      FROM onlyoffice_document_versions v
      LEFT JOIN ${usersTable} u ON u.idusuario = v.modified_by
      WHERE v.document_id = ? AND v.version_number = ?
-       AND (v.source IN ('initial', 'close') OR (v.source = 'forcesave' AND v.changes_path IS NOT NULL))
      LIMIT 1`,
     [documentId, versionNumber],
   );
@@ -79,7 +77,6 @@ async function findPreviousHistoryVersion(documentId, versionNumber) {
     `SELECT id, version_number, file_path, file_type, editor_key, history_key
      FROM onlyoffice_document_versions
      WHERE document_id = ? AND version_number < ?
-       AND (source IN ('initial', 'close') OR (source = 'forcesave' AND changes_path IS NOT NULL))
      ORDER BY version_number DESC LIMIT 1`,
     [documentId, versionNumber],
   );
@@ -134,7 +131,7 @@ async function recordVersion({ documentId, filePath, modifiedBy, source, callbac
 
     if (source === 'close') {
       const [forceSaves] = await connection.execute(
-        `SELECT id, version_number, file_path
+        `SELECT id, version_number, file_path, changes_path, history_data
          FROM onlyoffice_document_versions
          WHERE document_id = ? AND editor_key = ? AND source = 'forcesave'
          ORDER BY version_number DESC LIMIT 1 FOR UPDATE`,
@@ -143,12 +140,14 @@ async function recordVersion({ documentId, filePath, modifiedBy, source, callbac
       if (forceSaves.length) {
         const previousSave = forceSaves[0];
         const historyKey = `doc-${documentId}-v${previousSave.version_number}-${Date.now()}`;
+        const savedChangesPath = changesPath || previousSave.changes_path;
+        const savedHistoryData = hasHistoryData(historyData) ? historyData : previousSave.history_data;
         await connection.execute(
           `UPDATE onlyoffice_document_versions
            SET file_path = ?, modified_by = ?, source = 'close', history_key = ?, changes_path = ?,
                history_data = ?, file_type = ?, created_at = CURRENT_TIMESTAMP
            WHERE id = ?`,
-          [filePath, modifiedBy, historyKey, changesPath, historyData, fileType, previousSave.id],
+          [filePath, modifiedBy, historyKey, savedChangesPath, savedHistoryData, fileType, previousSave.id],
         );
         await connection.execute(
           `UPDATE onlyoffice_document_audit
@@ -192,6 +191,16 @@ async function recordVersion({ documentId, filePath, modifiedBy, source, callbac
     return { duplicate: false, versionNumber };
   } catch (error) { await connection.rollback(); throw error; }
   finally { connection.release(); }
+}
+
+function hasHistoryData(value) {
+  if (!value) return false;
+  try {
+    const data = typeof value === 'string' ? JSON.parse(value) : value;
+    return Boolean(data && typeof data === 'object' && Object.keys(data).length > 0);
+  } catch {
+    return false;
+  }
 }
 
 module.exports = {

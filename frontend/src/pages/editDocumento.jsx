@@ -228,15 +228,16 @@ export default function EditDocumento() {
   }
 
   async function handleShowChanges(entry) {
-    if (!entry.history_version) {
-      setMessage('ONLYOFFICE guardó la versión, pero no entregó el archivo de comparación para este cambio.')
+    if (!entry.version_number || entry.source === 'initial') {
+      setMessage('Esta entrada no tiene una versión anterior para consultar.')
       return
     }
     try {
       const history = await getDocumentHistory(documentId)
       // refreshHistory selecciona la revisión de esta entrada en la lista nativa de ONLYOFFICE.
-      editorRef.current?.refreshHistory({ ...history, currentVersion: Number(entry.history_version) })
+      editorRef.current?.refreshHistory({ ...history, currentVersion: Number(entry.history_version || entry.version_number) })
       setViewingHistory(true)
+      if (!entry.history_version) setMessage('Se abrirá la versión guardada; ONLYOFFICE no entregó datos para resaltar sus diferencias.')
     } catch (cause) { setError(`No se pudo abrir la comparación: ${cause.message}`) }
   }
 
@@ -316,7 +317,8 @@ export default function EditDocumento() {
                   {audit.length === 0 ? <p className="empty-state">Aún no hay modificaciones registradas.</p> : <>
                     <ol className="audit-list">{visibleAudit.map((entry) => <li key={entry.id}>
                       <strong>{entry.nombre}</strong><span>{auditLabel(entry.action)}</span><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}</time>
-                      {entry.history_version ? <button className="history-change-button" onClick={() => handleShowChanges(entry)}>Ver cambios en el documento</button> : entry.action !== 'document_created' && <small className="history-pending">ONLYOFFICE aún no entregó la comparación de este guardado.</small>}
+                      {entry.version_number && entry.source !== 'initial' && <button className="history-change-button" onClick={() => handleShowChanges(entry)}>{entry.history_version ? 'Ver cambios en el documento' : 'Ver versión guardada'}</button>}
+                      {entry.version_number && entry.source !== 'initial' && !entry.history_version && <small className="history-pending">No hay datos de diferencias para resaltar en esta versión.</small>}
                     </li>)}</ol>
                     {audit.length > AUDIT_PAGE_SIZE && <nav className="audit-pagination" aria-label="Paginación del historial">
                       <button type="button" onClick={() => setAuditPage((page) => Math.max(1, page - 1))} disabled={auditPage === 1}><i class="snd__icono snd-arrow--left icono--24" aria-hidden="true"></i></button>

@@ -15,6 +15,18 @@ function assertTrustedDownloadUrl(value) {
 }
 
 async function processCallback(body) {
+
+  console.info('ONLYOFFICE callback fields:', {
+    status: body.status,
+    fields: Object.keys(body),
+    notmodified: body.notmodified,
+    history: body.history,
+    hasChangesurl: Boolean(body.changesurl),
+    hasChangesUrl: Boolean(body.changesUrl),
+    hasHistory: Object.hasOwn(body, 'history'),
+    historyKeys: Object.keys(body.history || {}),
+  })
+
   const { key, status, url, changesurl, history, users, userdata, filetype } = body;
   if (status !== 2 && status !== 6) return { ignored: true };
   if (!key || !url) throw new Error('Callback de guardado incompleto.');
@@ -46,7 +58,7 @@ async function processCallback(body) {
     fileType: filetype || document.file_type,
   });
   if (result.merged && result.previousFilePath !== filePath) {
-    await fs.rm(result.previousFilePath, { force: true }).catch(() => {});
+    await fs.rm(result.previousFilePath, { force: true }).catch(() => { });
   }
   const saveRequestId = /^user:\d+:save:([\w-]+)$/.exec(userdata || '')?.[1] || null;
   return { ...result, documentId: document.id, saveRequestId };
