@@ -13,11 +13,14 @@ app.use(cors({ origin: (origin, callback) => {
   if (!origin || allowedOrigins.has(origin)) return callback(null, true);
   return callback(new Error('Origen no permitido por CORS.'));
 } }));
+// Document Server signs its callback body. Parse it as raw data before the
+// generic JSON middleware so a malformed or altered body can be diagnosed and
+// verified without losing fields such as changesurl.
+app.use(`${apiPath}/onlyoffice`, express.raw({ type: ['application/json', 'application/*+json'], limit: '5mb' }), callbackRoutes);
 app.use(express.json({ limit: '1mb' }));
 app.get(`${apiPath}/health`, (_req, res) => res.json({ ok: true }));
 app.use(`${apiPath}/auth`, authRoutes);
 app.use(`${apiPath}/documents`, documentRoutes);
-app.use(`${apiPath}/onlyoffice`, callbackRoutes);
 app.use((error, _req, res, _next) => {
   console.error(error);
   const status = error.status === 413 ? 413 : 500;

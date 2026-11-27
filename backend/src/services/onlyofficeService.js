@@ -18,8 +18,8 @@ function createEditorConfig(document, user) {
   return { ...config, token: jwt.sign(config, process.env.ONLYOFFICE_JWT_SECRET) };
 }
 
-function verifyCallbackToken(req) {
-  const token = req.body?.token || req.get('Authorization')?.replace(/^Bearer\s+/i, '');
+function verifyCallbackToken(req, payload = req.body) {
+  const token = payload?.token || req.get('Authorization')?.replace(/^Bearer\s+/i, '');
   if (!token) throw new Error('Callback sin token JWT.');
   return jwt.verify(token, process.env.ONLYOFFICE_JWT_SECRET);
 }

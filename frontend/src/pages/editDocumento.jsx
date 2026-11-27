@@ -39,6 +39,8 @@ export default function EditDocumento() {
   const uploadInputRef = useRef(null)
   const confirmedSaveRequestsRef = useRef(new Set())
   const pendingSaveRequestIdRef = useRef(null)
+  const auditMaxIdRef = useRef(0)
+  const saveAuditBaselineRef = useRef(0)
   const activeDocument = documents.find((document) => String(document.id) === String(documentId))
   const auditPageCount = Math.max(1, Math.ceil(audit.length / AUDIT_PAGE_SIZE))
   const visibleAudit = audit.slice((auditPage - 1) * AUDIT_PAGE_SIZE, auditPage * AUDIT_PAGE_SIZE)
@@ -132,11 +134,55 @@ export default function EditDocumento() {
     let cancelled = false
     Promise.all([getDocumentVersions(documentId), getDocumentAudit(documentId)])
       .then(([nextVersions, nextAudit]) => {
-        if (!cancelled) { setVersions(nextVersions); setAudit(nextAudit) }
+        if (!cancelled) {
+          setVersions(nextVersions)
+          setAudit(nextAudit)
+          auditMaxIdRef.current = Math.max(0, ...nextAudit.map((entry) => Number(entry.id) || 0))
+        }
       })
       .catch((cause) => { if (!cancelled) setError(cause.message) })
     return () => { cancelled = true }
   }, [documentId])
+
+  useEffect(() => {
+    if (!documentId || !pendingSaveRequestId) return undefined
+    let cancelled = false
+    let attempts = 0
+    let timer
+
+    async function confirmSaveFromAudit() {
+      try {
+        const [nextVersions, nextAudit] = await Promise.all([
+          getDocumentVersions(documentId),
+          getDocumentAudit(documentId),
+        ])
+        if (cancelled) return
+        const latestAuditId = Math.max(0, ...nextAudit.map((entry) => Number(entry.id) || 0))
+        auditMaxIdRef.current = latestAuditId
+        if (latestAuditId > saveAuditBaselineRef.current) {
+          setVersions(nextVersions)
+          setAudit(nextAudit)
+          setAuditPage(1)
+          pendingSaveRequestIdRef.current = null
+          setPendingSaveRequestId(null)
+          setMessage('Guardado confirmado por ONLYOFFICE.')
+          return
+        }
+      } catch { /* Reintenta mientras ONLYOFFICE entrega el callback. */ }
+
+      attempts += 1
+      if (attempts >= 30) {
+        pendingSaveRequestIdRef.current = null
+        setPendingSaveRequestId(null)
+        setError('ONLYOFFICE no confirmó el guardado. Revisa el callback del servidor.')
+        return
+      }
+      timer = window.setTimeout(confirmSaveFromAudit, 2000)
+    }
+
+    timer = window.setTimeout(confirmSaveFromAudit, 1000)
+    return () => { cancelled = true; window.clearTimeout(timer) }
+  }, [documentId, pendingSaveRequestId])
 
   useEffect(() => {
     if (!token || !documentId || !editorReady) return undefined
@@ -165,6 +211,7 @@ export default function EditDocumento() {
       const [nextVersions, nextAudit] = await Promise.all([getDocumentVersions(id), getDocumentAudit(id)])
       setVersions(nextVersions)
       setAudit(nextAudit)
+      auditMaxIdRef.current = Math.max(0, ...nextAudit.map((entry) => Number(entry.id) || 0))
     } catch { /* La conexión realtime volverá a emitir al reintentar. */ }
   }
 
@@ -206,6 +253,7 @@ export default function EditDocumento() {
     if (!documentId) return
     setSaving(true)
     setMessage('')
+    saveAuditBaselineRef.current = auditMaxIdRef.current
     try {
       const result = await saveDocument(documentId)
       if (result.saved && result.requestId) {

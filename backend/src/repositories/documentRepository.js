@@ -186,6 +186,9 @@ async function recordVersion({ documentId, filePath, modifiedBy, source, callbac
     );
     if (source === 'close') {
       await connection.execute('UPDATE onlyoffice_documents SET editor_key = ?, storage_path = ? WHERE id = ?', [nextHistoryKey, filePath, documentId]);
+    } else if (source === 'forcesave') {
+      // Persist the latest snapshot without rotating editor_key during the active co-editing session.
+      await connection.execute('UPDATE onlyoffice_documents SET storage_path = ? WHERE id = ?', [filePath, documentId]);
     }
     await connection.commit();
     return { duplicate: false, versionNumber };
